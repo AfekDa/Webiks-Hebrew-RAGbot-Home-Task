@@ -201,6 +201,17 @@ Why it matters:
 
 ---
 
+## Submission repo (set up)
+
+- **Private repo:** https://github.com/AfekDa/Webiks-Hebrew-RAGbot-Home-Task
+- One repo holding both projects as subfolders: `Webiks-Hebrew-RAGbot-Demo/` (backend) and `Webiks-Hebrew-RAGbot/` (search engine), plus `rag_eval/` and the notes.
+- **Commit strategy for easy review:** commit #1 is the pristine upstream code (see `UPSTREAM.md` for exact sources/commits); every later commit's diff shows exactly what we changed for the task.
+- Big files (corpus, QA csv, model, `.venv`, eval cache) are **not** in git — see `.gitignore` + `UPSTREAM.md` for where to download them.
+- The improvement will touch **both** subfolders: the reranker step goes in the engine's search; the backend is pointed at the upgraded engine. Reranker kept optional so existing behavior still works.
+- Reviewers: when ready, add them as collaborators on the private repo (Settings → Collaborators), or we can switch to a zip.
+
+---
+
 ## Environment notes
 
 - Working folder: `C:\Users\GIGABYTE\Documents\webiks`
