@@ -18,6 +18,14 @@
 - [ ] Wire the reranker into the demo backend (must still run locally)
 - [ ] Write `SUBMISSION.md` (1–2 pages) + 2–3 slides
 
+### Why the three "setup" steps matter (in plain words)
+
+The one-liner: **the ingredients, the working kitchen, and the scale that proves the new recipe is better.**
+
+- **Get the data + model (the ingredients).** To test anything you need three things: the **corpus** (~24,000 paragraphs from the Kol-Zchut site — the "textbook" answers live in), the **QA questions** (real Hebrew questions each paired with the correct page — our **answer key**), and the **Hebrew model** (the trained tool that turns text into "meaning-numbers" and decides which paragraphs are close to a question). Without all three there's nothing to measure. They're big, so they're kept out of the repo (see `.gitignore`).
+- **Clean Python environment `.venv` (the working kitchen).** A private toolbox of software for this project. We built a fresh one because the computer's default was broken, and we installed **the exact library versions Webiks used**. This means our code runs the model the same way the real system does, so the numbers are trustworthy and anyone can reproduce them.
+- **Before/after measurement `rag_eval/` (the scale).** The heart of the task. It asks the answer-key questions and checks **how often the correct page shows up** at #1 / top-3 / top-5 / top-10. We run it once on today's system ("before") and once on the reranker version ("after") — same questions, same scale, fair comparison. "Scripts written + smoke-tested" = the code is done and a tiny trial run works; the full run on hundreds of questions is the slow step saved for later (see below). This is our **evidence**: not "I improved it" but "here are the before/after numbers".
+
 ---
 
 ## What this system is (in plain terms)
