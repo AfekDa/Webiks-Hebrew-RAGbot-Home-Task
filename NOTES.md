@@ -13,7 +13,7 @@
 - [x] Get the data + model downloaded — corpus ✓, QA questions ✓, Hebrew model ✓ (unzipped, ready)
 - [x] Set up a clean Python environment (`.venv`) that actually works
 - [x] Build a before/after measurement — **scripts written + smoke-tested ✓** (`rag_eval/`)
-- [ ] Run the real baseline (the ~1-2h one-time encode) — **DO LATER, see "How to run" below**
+- [x] Run the real baseline (the ~1.5h one-time "study" step) — **DONE ✓ (numbers below)**
 - [ ] Build the reranker and measure again
 - [ ] Wire the reranker into the demo backend (must still run locally)
 - [ ] Write `SUBMISSION.md` (1–2 pages) + 2–3 slides
@@ -104,7 +104,7 @@ The task says to pick **one** improvement, so here's what else was on the table 
    *Why not:* the results are hit-or-miss and hard to measure convincingly — sometimes it helps, sometimes it adds noise. Weak, unclear payoff.
 
 4. **Replace or retrain the Hebrew model itself.**
-   *Why not:* huge effort, needs a strong GPU and hours of training, and it throws away the very thing Webiks built and are proud of. Wrong direction for a 72-hour task.
+   *Why not:* huge effort, needs a powerful graphics card and hours of training, and it throws away the very thing Webiks built and are proud of. Wrong direction for a 72-hour task.
 
 **Bottom line:** the reranker gives the best mix of *clear, provable improvement* + *low risk* + *respects their existing model*, which is why we picked it.
 
@@ -132,7 +132,27 @@ The model download included Webiks' own evaluation of their trained search (`eva
 
 **Why this matters:** the right page is in the top 10 ~71% of the time, but ranked #1 only ~36% of the time. That big gap is *exactly* the problem a reranker fixes — the answer is caught in the net but not placed on top. In principle, reranking could push the "#1" rate from ~36% toward the ~71% ceiling. This is direct, authors'-own evidence that we picked a real, worthwhile problem.
 
-(Caveats: measured on a small sample; we'll still produce our own before/after numbers. Also: the embedder is `me5-large`-based, 1024-dim, trained with MultipleNegativesRankingLoss.)
+(Small print you can skip: this was measured on a small sample; we still make our own before/after numbers. The Hebrew model is built on a well-known ready-made multilingual model called `me5-large`.)
+
+---
+
+## Our baseline result (the "before" number) — measured 2026-09-12
+
+We ran our own test: **200 questions**, searching through a **2,000-page** set (all the pages that hold answers, plus lots of random other pages mixed in). Here's how today's system did:
+
+| How often the correct page is... | Our result |
+|---|---|
+| ranked **#1** | **76.5%** |
+| in the top 3 | 93.0% |
+| in the top 5 | 96.5% |
+| in the **top 10** | **98.0%** |
+| "how high up", on average (MRR@10) | **0.852** |
+
+**What it means in plain words:** for about 3 out of 4 questions the right page is already at the very top, and almost always (98%) it's somewhere in the top 10.
+
+**Where the reranker can help:** the right page is in the top 10 **98%** of the time but at #1 only **76.5%** of the time. That gap — about **21 questions out of 100** — is the target: the answer is already found, just not on top. The reranker's job is to lift those to #1, which should push the "#1" rate and the "how high up" score up.
+
+**Honest note:** these numbers are higher than Webiks' own (~36% at #1). That's expected — we test on a smaller 2,000-page set, so there's less to sift through (an easier exam). It's still a fair before/after because the reranker faces the exact same exam. It just means the room to improve is smaller here, so any gain is meaningful.
 
 ---
 
@@ -145,20 +165,20 @@ The model download included Webiks' own evaluation of their trained search (`eva
   3. take the top 50 (same as the real system), collapse to unique pages,
   4. check: did a correct page land at #1 / top-3 / top-5 / top-10? (+ an "how high up" score, MRR)
 - Report those numbers for the baseline, then again after adding the reranker. Same questions, same set of pages → a fair before/after.
-- Why offline math is safe: the real system's search is literally a cosine-similarity lookup; copying that in numpy gives identical rankings but runs instantly and lets us reuse one cached encoding for both baseline and reranker. The real Elasticsearch is only needed for the final live demo, not for measuring.
+- Why doing it ourselves is safe: the real system's search is just a "how close are these two things" calculation. We redo that exact same calculation in our own code — same ranking, but it runs instantly and lets us reuse the one-time "studying" for both the before and the after test. The real search database (Elasticsearch) is only needed for the final live demo, not for measuring.
 
 ### The one slow reality (why we subset)
 
-- This machine is **CPU-only** (no GPU) and encodes ~1 paragraph every **~3 seconds** at full length.
-- Paragraphs are long (median ~410 tokens, 94% near the 512 limit), so we must NOT shorten them — that would change results.
-- => Encoding the full 24k corpus would take ~17 hours. The task explicitly allows using a subset, so we do.
-- Smoke test confirmed: with a page set made of only correct pages (no random extras) the score is 100% — meaningless. The real run needs random extra pages mixed in so the test is honest.
+- This machine has no graphics card, so "studying" pages is slow — about **1 page every 3 seconds**.
+- Pages are long (close to the model's size limit), and we must NOT shorten them — that would change the results.
+- => Studying all 24,000 pages would take ~17 hours. The task explicitly allows using a smaller set, so we do (2,000 pages ≈ 1.5 hours, done once).
+- Quick trial confirmed: if the set is made of *only* correct pages (no random extras) the score is 100% — meaningless. The real run needs random extra pages mixed in so the test is honest.
 
-### HOW TO RUN THE REAL BASELINE (do later)
+### HOW TO RUN THE BASELINE (already done once — here's how to re-run)
 
 Open a terminal in `C:\Users\GIGABYTE\Documents\webiks` and run these two commands.
 
-**Step 1 — build + encode the test subset (the slow, one-time part):**
+**Step 1 — build the test set + "study" the pages (the slow, one-time part):**
 ```
 .venv\Scripts\python rag_eval\build_subset.py --questions 200 --pages 2000 --tag main
 ```
@@ -215,7 +235,7 @@ Why it matters:
 
 **How they fit (open-book exam analogy):** corpus = the textbook the system searches; QA file = the answer key saying which page is correct for each question.
 
-**Extra fact:** the Hebrew embedder is built on `me5-large` (multilingual-e5-large); paragraphs were split to fit its 512-token limit.
+**Extra fact:** the Hebrew model is built on a well-known ready-made multilingual model (`me5-large`); the pages were cut into paragraphs small enough for that model to read in one go.
 
 **Heads-up:** the base Anaconda Python has a broken pandas/numpy. We'll make a clean, separate environment for the real work.
 
@@ -243,6 +263,6 @@ Why it matters:
 
 ## Open questions / decisions
 
-- Which exact reranker model to use (needs to handle Hebrew). — TBD, decide after baseline.
-- How big a corpus subset to use for measuring. — TBD.
+- Which exact reranker to use (needs to handle Hebrew). — **next decision**, now that the baseline is done.
+- How big a page set to use for measuring. — **decided: 2,000 pages** (good balance of honest test + reasonable time).
 - Docker for the final live demo, or an easier alternative. — TBD.
