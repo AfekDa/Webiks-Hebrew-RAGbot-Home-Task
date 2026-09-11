@@ -66,18 +66,18 @@ does the slow part **once** and saves the result.
 
 What it does, in order:
 1. Picks a sample of questions to test (default 200).
-2. Builds the **haystack** = the pile of paragraphs to search. Always includes
-   the **correct pages'** paragraphs (so the answer is findable), plus random
-   **decoy** paragraphs up to the target size (default 2,000).
-3. Runs the Hebrew model over the haystack to make the meaning-numbers — **this
+2. Builds the **set of pages to search**. Always includes the **correct pages'**
+   paragraphs (so the answer is findable), plus lots of random **other** pages
+   up to the target size (default 2,000), so the test is not too easy.
+3. Runs the Hebrew model over every page to make the meaning-numbers — **this
    is the slow part**.
-4. Saves four files to a cache folder: the numbers, the paragraphs, the
-   questions, and the settings used.
+4. Saves four files to a cache folder: the numbers, the pages, the questions,
+   and the settings used.
 
 Interview point — **"why a subset, not all 24,000?"** Two honest reasons: the
 task explicitly allows a subset, and the full corpus is ~1–2 hours on CPU. It's
-still fair because the correct answers are guaranteed to be in the haystack,
-mixed among ~2,000 decoys — hard enough to be meaningful.
+still fair because the correct answers are always included, mixed among ~2,000
+random other pages — hard enough to be meaningful.
 
 ---
 
@@ -86,7 +86,7 @@ mixed among ~2,000 decoys — hard enough to be meaningful.
 Reads the saved cache from step 2 and produces the **"before"** numbers.
 
 What it does:
-1. Loads the saved haystack numbers.
+1. Loads the saved page numbers from step 1.
 2. Turns the **questions** into meaning-numbers (fast — a few hundred short
    questions).
 3. For each question: scores it against every paragraph, calls `rank_pages`
@@ -123,7 +123,7 @@ From the project root (`C:\Users\GIGABYTE\Documents\webiks`):
 
 ```
 # Step 1 — slow, one-time (leave running / overnight if needed):
-.venv\Scripts\python rag_eval\build_subset.py --questions 200 --haystack 2000 --tag main
+.venv\Scripts\python rag_eval\build_subset.py --questions 200 --pages 2000 --tag main
 
 # Step 2 — fast, prints the before-numbers:
 .venv\Scripts\python rag_eval\eval_baseline.py --tag main
@@ -132,7 +132,7 @@ From the project root (`C:\Users\GIGABYTE\Documents\webiks`):
 Tiny trial run to check things work (~3 min):
 
 ```
-.venv\Scripts\python rag_eval\build_subset.py --questions 10 --haystack 60 --tag smoke
+.venv\Scripts\python rag_eval\build_subset.py --questions 10 --pages 60 --tag smoke
 .venv\Scripts\python rag_eval\eval_baseline.py --tag smoke
 ```
 

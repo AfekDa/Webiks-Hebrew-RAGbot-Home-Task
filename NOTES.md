@@ -144,7 +144,7 @@ The model download included Webiks' own evaluation of their trained search (`eva
   2. score every paragraph by closeness,
   3. take the top 50 (same as the real system), collapse to unique pages,
   4. check: did a correct page land at #1 / top-3 / top-5 / top-10? (+ an "how high up" score, MRR)
-- Report those numbers for the baseline, then again after adding the reranker. Same questions, same haystack → a fair before/after.
+- Report those numbers for the baseline, then again after adding the reranker. Same questions, same set of pages → a fair before/after.
 - Why offline math is safe: the real system's search is literally a cosine-similarity lookup; copying that in numpy gives identical rankings but runs instantly and lets us reuse one cached encoding for both baseline and reranker. The real Elasticsearch is only needed for the final live demo, not for measuring.
 
 ### The one slow reality (why we subset)
@@ -152,7 +152,7 @@ The model download included Webiks' own evaluation of their trained search (`eva
 - This machine is **CPU-only** (no GPU) and encodes ~1 paragraph every **~3 seconds** at full length.
 - Paragraphs are long (median ~410 tokens, 94% near the 512 limit), so we must NOT shorten them — that would change results.
 - => Encoding the full 24k corpus would take ~17 hours. The task explicitly allows using a subset, so we do.
-- Smoke test confirmed: with a haystack of only correct pages (no distractors) the score is 100% — meaningless. The real run needs distractors so the test is honest.
+- Smoke test confirmed: with a page set made of only correct pages (no random extras) the score is 100% — meaningless. The real run needs random extra pages mixed in so the test is honest.
 
 ### HOW TO RUN THE REAL BASELINE (do later)
 
@@ -160,9 +160,9 @@ Open a terminal in `C:\Users\GIGABYTE\Documents\webiks` and run these two comman
 
 **Step 1 — build + encode the test subset (the slow, one-time part):**
 ```
-.venv\Scripts\python rag_eval\build_subset.py --questions 200 --haystack 2000 --tag main
+.venv\Scripts\python rag_eval\build_subset.py --questions 200 --pages 2000 --tag main
 ```
-- `--haystack` = how many paragraphs to search through. This is the time knob:
+- `--pages` = how many pages to search through in total. This is the time knob:
   - ~1000 paragraphs ≈ 50-60 min (fastest, but an easier test)
   - ~2000 paragraphs ≈ 1.5-2 hours (good balance — recommended)
   - ~3500 paragraphs ≈ ~3 hours (most realistic / most convincing)
@@ -208,7 +208,7 @@ Why it matters:
 - Example: the question about whether the Freedom of Information Law applies to private insurers has **two** correct pages — the law itself (1963) and how to file a request (7487) — so it appears twice.
 - Not a data bug — it's the answer key saying "any of these pages counts as correct." This is exactly why we score "at least one correct page near the top."
 
-**Paragraph corpus** (`Webiks_Hebrew_RAGbot_KolZchut_Paragraphs_Corpus_v1.0.json`, ~150 MB) — the "haystack" the system searches. Downloaded ✓. Columns: `doc_id, title, content, link, license`.
+**Paragraph corpus** (`Webiks_Hebrew_RAGbot_KolZchut_Paragraphs_Corpus_v1.0.json`, ~150 MB) — all the pages the system searches through. Downloaded ✓. Columns: `doc_id, title, content, link, license`.
 - **24,487 paragraphs** across **7,007 pages** (~3.5 paragraphs/page, biggest page = 79).
 - **All 1,640 answer-key pages are present in the corpus** (0 missing) → we can grade cleanly.
 - Small enough (~24k, not millions) that we can process the **whole** corpus for measuring — no tiny subset needed. The "indexing takes hours" warning is about the slow database, which we skip for measuring.
