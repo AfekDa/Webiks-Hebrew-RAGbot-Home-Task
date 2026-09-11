@@ -39,6 +39,17 @@ It's the same idea as the OpenAI vector store, but Webiks built every piece them
 
 **The whole task is really about one thing: how well does it find the right paragraphs?**
 
+### How the data gets loaded (embed → save)
+
+Before anything can be searched, the paragraphs have to go into Elasticsearch. Good to know for the interview: **the code does NOT do the chunking** — the corpus file already comes cut into paragraphs. Loading is two steps:
+
+1. **Embed each paragraph** (in `engine.py`, `update_docs` / `create_paragraphs`): run the Hebrew model on the paragraph's text to make its fingerprint, and attach that fingerprint to the paragraph. Key line: `content_vectors = self.retrieval_model.encode(...)`.
+2. **Save it** (in `elastic_model.py`, `create_paragraph` / `create_or_update_documents`): write the text + its fingerprint into Elasticsearch. Key line: `self.es_client.index(index=index, body=doc)`. (If updating, it deletes the old copies of that page first, so no duplicates.)
+
+The backend kicks this off through its `/update` route (`main.py`). One nice detail: **search later uses the exact same `encode(...)` on the question**, so the question and the paragraphs are measured with the same ruler — that's the only reason comparing them works.
+
+Interview note: since chunking happens *before* the code, "better chunking" would be a **different** improvement lever than the reranker we picked — worth mentioning as a considered-but-not-chosen option.
+
 ---
 
 ## The improvement: today vs. reranker

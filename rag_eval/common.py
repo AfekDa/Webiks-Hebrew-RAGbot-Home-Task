@@ -1,7 +1,8 @@
 """Shared helpers for the retrieval evaluation.
 
-Faithfully mirrors how the real system retrieves (see Webiks-Hebrew-RAGbot/
-webiks_hebrew_ragbot/engine.py + elastic_model.py):
+Faithfully mirrors how the real system retrieves -- specifically the function
+Engine.search_documents in Webiks-Hebrew-RAGbot/webiks_hebrew_ragbot/engine.py
+(with the top-50 search coming from elastic_model.py):
 
   1. encode the text with the SAME SentenceTransformer model (it normalizes
      its output, so cosine similarity == dot product);

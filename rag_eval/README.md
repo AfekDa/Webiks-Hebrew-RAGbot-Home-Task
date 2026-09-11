@@ -37,6 +37,25 @@ One line to remember: *"`common.py` reproduces the real search — top 50
 paragraphs, then dedup to pages — but in plain numpy, so I don't need to run
 Elasticsearch."*
 
+### What it's copying (so you can check it's faithful)
+
+`rank_pages` deliberately mirrors the real Webiks search function,
+**`Engine.search_documents`**, in
+`Webiks-Hebrew-RAGbot/webiks_hebrew_ragbot/engine.py:103`. That function does
+three steps: (1) encode the question, (2) ask Elasticsearch for the closest
+paragraphs (it returns the top 50), (3) loop through them and keep each **page**
+(`doc_id`) the first time it appears, until it has `top_k` pages.
+
+Our copy matches it step for step — the only difference is *how* we get the 50
+closest: they use Elasticsearch (a running database), we do the same math in
+numpy (`sims = q_emb @ emb.T`). Same result, no database to install — which is
+exactly why these tests run on a laptop.
+
+So if asked *"how do you know your offline test matches the real system?"*:
+**"I copied `Engine.search_documents` step for step — top 50 paragraphs, then
+dedup to unique pages — and only swapped Elasticsearch for the same calculation
+in numpy."**
+
 ---
 
 ## 2. `build_subset.py` — prepare the exam (slow step, run once)
