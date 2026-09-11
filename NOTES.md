@@ -163,6 +163,7 @@ Tip: you can leave Step 1 running in the background / overnight. Once it's done,
 - Clean virtual env at `.venv` (the base Anaconda Python had a broken numpy/pandas).
 - Pinned to versions that work together: `torch==2.3.1` (CPU), `sentence-transformers==3.0.1`, `transformers==4.42.3`, `numpy<2`. (Newer torch/transformers hit Windows DLL / bug issues.)
 - Scripts live in `rag_eval/`: `common.py` (shared logic), `build_subset.py` (step 1), `eval_baseline.py` (step 2). The reranker script comes next.
+- **Fair-measurement detail:** Step 2 cuts each question to the same length limit that Step 1 used on the paragraphs (it reads that number back from the saved cache). Questions are short so this basically never changes anything, but it keeps both sides measured exactly the same way — no accidental apples-to-oranges.
 
 ---
 

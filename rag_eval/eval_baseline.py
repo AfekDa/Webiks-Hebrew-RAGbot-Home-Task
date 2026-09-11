@@ -1,5 +1,7 @@
 """STEP 2 (fast): measure the baseline (today's system) on the cached subset.
 
+Run build_subset.py first with the same --tag; this step reads its cache.
+
 Encodes the test questions, scores them against the cached haystack exactly the
 way the real system does (top-50 paragraphs -> dedup to pages), and reports how
 often the correct page lands at #1 / top-3 / top-5 / top-10, plus MRR@10.
@@ -24,6 +26,7 @@ def main():
     emb = np.load(os.path.join(out, "para_emb.npy"))
     paras = json.load(open(os.path.join(out, "paras.json"), encoding="utf-8"))
     questions = json.load(open(os.path.join(out, "questions.json"), encoding="utf-8"))
+    cfg = json.load(open(os.path.join(out, "config.json"), encoding="utf-8"))
     para_doc_ids = [p["doc_id"] for p in paras]
     print(f"loaded cache '{args.tag}': {len(paras)} paragraphs, {len(questions)} questions")
 
@@ -31,6 +34,9 @@ def main():
     import torch
     torch.set_num_threads(os.cpu_count())
     model = SentenceTransformer(common.MODEL_DIR)
+    # Cut questions to the same length limit used when the paragraphs were
+    # embedded, so both sides are measured the same way.
+    model.max_seq_length = cfg.get("seq", 512)
     model.eval()
 
     q_texts = [q["question"] for q in questions]

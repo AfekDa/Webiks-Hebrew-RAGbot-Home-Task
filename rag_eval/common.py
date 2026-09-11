@@ -59,7 +59,13 @@ def load_qa():
 def rank_pages(sims, para_doc_ids, es_size=ES_SIZE):
     """Given similarity scores for every paragraph, reproduce the system's
     page ranking: take top `es_size` paragraphs, then dedup to unique pages
-    in first-seen order. Returns the ordered list of doc_ids (pages)."""
+    in first-seen order.
+
+    Returns two things:
+      - pages: the ranked list of page ids (doc_ids), best first;
+      - order: the top `es_size` paragraph indices (best first, before dedup).
+        The reranker step reuses `order` to re-score the SAME paragraphs.
+    """
     import numpy as np
     order = np.argsort(-sims)[:es_size]        # top-50 paragraph indices
     pages, seen = [], set()
@@ -72,8 +78,16 @@ def rank_pages(sims, para_doc_ids, es_size=ES_SIZE):
 
 
 def score_ranking(ranked_pages, accepted, ks=(1, 3, 5, 10)):
-    """Compute hit@k and reciprocal rank for one question.
-    hit@k = at least one accepted page appears in the top k pages."""
+    """Score one question's page ranking against its accepted pages.
+
+    hit@k = at least one accepted page appears in the top k pages.
+
+    Returns three things:
+      - hits: {k: True/False} for each k in `ks`;
+      - rr: reciprocal rank (1/position of the first correct page, 0 if none
+        in the top 10) -- averaging this over all questions gives MRR@10;
+      - rank: the position (1-based) of the first correct page, or None.
+    """
     rank = None
     for pos, did in enumerate(ranked_pages, start=1):
         if did in accepted:
