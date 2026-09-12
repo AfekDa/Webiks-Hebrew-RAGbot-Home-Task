@@ -1,16 +1,89 @@
 # Working Notes — Hebrew RAG Home Task
 
-> Historical notes from before the completed GPU run. For current measurements,
-> setup, and conclusions, use `SUBMISSION.md`, `LOCAL_DEMO.md`, and
-> `rag_eval/results/`. The assumptions, status checkboxes, and timing
-> estimates below are retained as history and are not the final findings.
-
-> Scratch / status file. Plain-language, high-level. NOT the final submission.
-> At the end we'll distill the good parts into `SUBMISSION.md`.
+> Working diary, in plain language. The final, graded write-up is
+> `SUBMISSION.md`; how to run things is in `LOCAL_DEMO.md` and `rag_eval/README.md`.
+> The first section below is the up-to-date story. Everything after the
+> "History" line is kept as it was written at the time (the reranker plan, early
+> numbers on a small test), so the reasoning trail is visible.
 
 ---
 
-## Status tracker
+## What actually happened (the short version)
+
+We tried **three** improvements. Each was built, integrated, and measured the
+same honest way: pick any setting on the first half of the questions, report it
+once on the untouched second half, ship only if the **first result** improves
+without the top-5 getting worse. Two failed that test; the third passed clearly.
+
+| # | Idea | Held-out: correct page at #1 | Verdict |
+|---|---|---|---|
+| 1 | **Cross-encoder reranker** (BGE) re-reads question + paragraph, re-sorts | 44% → 41% (replace), 45% → 40% (blend) | rejected |
+| 2 | **Hybrid: dense + BM25 keyword search** (reciprocal rank fusion) | 45% → 36% | rejected |
+| 3 | **Page scoring**: best paragraph + second paragraph + title match | 38.8% → **54.8%** (500 fresh questions, 250/250) | **shipped** |
+
+### Why the reranker did not work (this surprised us, so here it is properly)
+
+A reranker is normally the safest retrieval upgrade there is. Here it lost, and
+the reasons are specific to this system, not a bug:
+
+1. **The search model already knows these questions.** Webiks' embedder was
+   fine-tuned on the very QA file we test with (the task sheet says so). On these
+   questions it is not a "rough fingerprint" at all: it is a model that has seen
+   the answer key. A general reranker that has never seen Kol-Zchut is being
+   asked to overrule an expert on the expert's own exam. It fixed some #1s
+   (24 out of 200) and broke more (30).
+2. **The reranker reads the paragraph alone; the topic lives in the title.**
+   Kol-Zchut paragraphs are fragments of a page. Many say "the payment is X" or
+   "apply at office Y" without naming the benefit. The page *title* names it.
+   The reranker scores the paragraph text only, so it cannot tell two similar
+   fragments from different pages apart. The search model does not suffer from
+   this as much because it was trained on exactly these fragment ↔ question pairs.
+3. **Deep reranking pulls weak pages up from far below.** Reranking all 50
+   candidates let a look-alike from position 30 jump to #1. Restricting the
+   reranker to the top few, or blending its order with the search order,
+   recovered most of the loss (top-5 even went up) but never beat the baseline
+   at #1 on the held-out half. A gain only on ranks 4–5 is not what users feel.
+4. **It is also slow and heavy.** A 2.2 GB model, ~2 s per question on a GPU and
+   minutes on a CPU, for a result that was not better. Not worth shipping.
+
+**The lesson that led to the fix:** don't fight the trained model; give it more
+to say. The title and the second paragraph are signals the *same* model
+produces, and combining them is what finally moved the first result.
+
+### Why hybrid (BM25) did not work
+
+Exact-word matching is weak on this corpus on its own (13% at #1): Hebrew
+inflection, many pages sharing the same official terms, and questions phrased
+colloquially. Fusing a weak ranker with a strong one mostly imports the weak
+one's mistakes near the top. It did help recall a little (top-5), same pattern
+as the reranker: better at ranks 4–5, worse at #1.
+
+### Why page scoring worked
+
+The baseline finds the right page (in the top 10 for ~87% of questions) but
+ranks it by its single best paragraph. The right page usually has *several*
+matching paragraphs and a title that names the topic; a look-alike page has one
+lucky paragraph. Scoring the page by best + 0.25 × second-best + 0.25 × title
+match, with a small gate so generic "hub" pages can't jump from far below, lifts
+the right page to #1 for 16 more questions in every 100, with no new model and
+no re-indexing. Full numbers and limitations: `SUBMISSION.md` section 4 and 6.
+
+### Status
+
+- [x] Understand the system, get data + model, clean environment, measurement harness
+- [x] Baseline on the full corpus (24,487 paragraphs)
+- [x] Reranker: built, integrated (optional), measured — **rejected** (numbers above)
+- [x] Hybrid BM25 + dense: built, measured — **rejected**
+- [x] Page scoring: built, integrated (optional, on in the local demo), measured on 500 fresh questions — **shipped**
+- [x] `SUBMISSION.md` written around the shipped result
+- [ ] 2–3 slides for the interview
+- [ ] Run `scripts/verify_demo.py` once on the GPU PC against the live API and commit its output
+
+---
+
+## History (as written at the time; superseded by the section above)
+
+## Status tracker (old)
 
 - [x] Read the task
 - [x] Clone the repos and understand how the system works
@@ -19,9 +92,9 @@
 - [x] Set up a clean Python environment (`.venv`) that actually works
 - [x] Build a before/after measurement — **scripts written + smoke-tested ✓** (`rag_eval/`)
 - [x] Run the real baseline (the ~1.5h one-time "study" step) — **DONE ✓ (numbers below)**
-- [ ] Build the reranker and measure again
-- [ ] Wire the reranker into the demo backend (must still run locally)
-- [ ] Write `SUBMISSION.md` (1–2 pages) + 2–3 slides
+- [x] Build the reranker and measure again — done; it did not help (see top)
+- [x] Wire the reranker into the demo backend (must still run locally) — done, kept optional/off
+- [x] Write `SUBMISSION.md` (1–2 pages) — done; slides pending
 
 ### Why the three "setup" steps matter (in plain words)
 
@@ -57,7 +130,11 @@ Interview note: since chunking happens *before* the code, "better chunking" woul
 
 ---
 
-## The improvement: today vs. reranker
+## The improvement (original plan): today vs. reranker
+
+> This was the plan before measuring. The reranker was built and measured and
+> did **not** hold up; see "What actually happened" at the top. The problem
+> description here is still right; the chosen fix changed.
 
 ### The problem today
 
@@ -111,7 +188,13 @@ The task says to pick **one** improvement, so here's what else was on the table 
 4. **Replace or retrain the Hebrew model itself.**
    *Why not:* huge effort, needs a powerful graphics card and hours of training, and it throws away the very thing Webiks built and are proud of. Wrong direction for a 72-hour task.
 
-**Bottom line:** the reranker gives the best mix of *clear, provable improvement* + *low risk* + *respects their existing model*, which is why we picked it.
+**Bottom line (at the time):** the reranker gives the best mix of *clear, provable improvement* + *low risk* + *respects their existing model*, which is why we picked it.
+
+**What we learned:** "respects their existing model" turned out to be the whole
+game. The reranker *replaced* the model's opinion and lost; hybrid search
+*diluted* it and lost; page scoring *extends* it (same model, more of its
+signals) and won. Option 1 above (hybrid) was also tried after the reranker and
+rejected for the reasons at the top.
 
 ---
 
@@ -120,6 +203,8 @@ The task says to pick **one** improvement, so here's what else was on the table 
 The set of questions Webiks gives us for testing (the "QA dataset") is the **exact same set their embedder was trained on**. So the fast search already "knows" these questions and will look strong. Our improvement has to add value *on top of* an already-good baseline — which is another reason the reranker (a separate, added signal) is a safer bet than trying to beat their model at its own game.
 
 We should measure the baseline **first**. If there's clear room to improve, the reranker story is strong. If the baseline is already near-perfect, we rethink.
+
+*(Later: this caveat turned out to be the decisive fact. See the top section.)*
 
 ---
 
@@ -158,6 +243,10 @@ We ran our own test: **200 questions**, searching through a **2,000-page** set (
 **Where the reranker can help:** the right page is in the top 10 **98%** of the time but at #1 only **76.5%** of the time. That gap — about **21 questions out of 100** — is the target: the answer is already found, just not on top. The reranker's job is to lift those to #1, which should push the "#1" rate and the "how high up" score up.
 
 **Honest note:** these numbers are higher than Webiks' own (~36% at #1). That's expected — we test on a smaller 2,000-page set, so there's less to sift through (an easier exam). It's still a fair before/after because the reranker faces the exact same exam. It just means the room to improve is smaller here, so any gain is meaningful.
+
+*(Later: we moved to the full corpus on a GPU PC. There the baseline is ~39–44%
+at #1, close to Webiks' own number, and that is where all the final
+measurements were made.)*
 
 ---
 
@@ -266,8 +355,9 @@ Why it matters:
 
 ---
 
-## Open questions / decisions
+## Open questions / decisions (resolved)
 
-- Which exact reranker to use (needs to handle Hebrew). — **next decision**, now that the baseline is done.
-- How big a page set to use for measuring. — **decided: 2,000 pages** (good balance of honest test + reasonable time).
-- Docker for the final live demo, or an easier alternative. — TBD.
+- Which exact reranker to use. — **BAAI/bge-reranker-v2-m3** (multilingual, handles Hebrew). Built and rejected.
+- How big a page set to use for measuring. — started with 2,000 pages on CPU; **final: the full corpus** on a GPU PC.
+- Docker for the final live demo, or an easier alternative. — **standalone Elasticsearch 8.12.2** under `.runtime/` (see `LOCAL_DEMO.md`); Docker also works.
+- What to ship. — **page scoring** (see top). Reranker and hybrid stay in the code, off by default, as evaluated alternatives.

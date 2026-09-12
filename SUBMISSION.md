@@ -106,6 +106,27 @@ earlier 200-question pilot on the same corpus pointed the same way (held-out
 Both improved recall around ranks 4–5 and damaged the first result. Both stay
 in the code, off by default, with results committed (`rag_eval/results/`).
 
+**Why a strong reranker lost, in plain words.** A reranker is usually the safest
+retrieval upgrade, so this deserves an explanation:
+
+- *The retriever has seen the exam.* The shipped embedder was fine-tuned on this
+  QA file. On these questions it is an expert; a general reranker that has never
+  seen Kol-Zchut was asked to overrule it and lost more often than it won
+  (fixed 24 first results out of 200, broke 30).
+- *The reranker reads the paragraph alone, but the topic lives in the title.*
+  Kol-Zchut paragraphs are fragments ("the payment is X", "apply at office Y")
+  that often don't name the benefit; the page title does. Two similar fragments
+  from different pages look alike to the reranker. That observation is what led
+  to adding the title match in page scoring.
+- *Deep reranking lets look-alikes jump from far below.* Restricting the reranker
+  to the top few, or blending its order with the search order, recovered most of
+  the loss (top-5 even improved) but never beat the baseline at #1 on held-out
+  questions. A gain only at ranks 4–5 is not what the user sees.
+
+The same pattern explains BM25: exact-word matching alone is weak here (Hebrew
+inflection, many pages sharing official terms), and fusing a weak ranker with a
+strong one mostly imports the weak one's mistakes near the top.
+
 ---
 
 ## 5. Integration into the Demo backend
