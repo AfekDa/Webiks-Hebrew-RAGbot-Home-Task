@@ -51,7 +51,9 @@ Open http://127.0.0.1:5000/docs for the API. `/health` returns 200.
 Submit `POST /search` with JSON `{"query":"your Hebrew question","asked_from":"local-demo"}`.
 The response includes retrieved `docs`, a mock `llm_result`, and retrieval timing.
 
-`scripts/run_demo.py` resolves the paths and enables reranking of all 50 candidates.
+`scripts/run_demo.py` resolves the paths and enables reranking of all 50 candidates
+in `blend` mode (reranker order merged with the search order; set
+`$env:RERANK_MODE='replace'` to use the reranker order alone).
 It uses CUDA float16 for the reranker and sorts raw logits, avoiding sigmoid
 saturation in reduced precision. The embedder remains float32. For CPU inference,
 explicitly set `$env:RERANK_DTYPE='float32'` before launching.

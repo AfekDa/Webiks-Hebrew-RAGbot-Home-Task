@@ -79,9 +79,18 @@ the one that should show the reranker helping.
 .venv\Scripts\python rag_eval\eval_baseline.py --tag full
 
 # STEP 3 — reranker before/after on the SAME questions. On a GPU you can rerank
-#          all 50 candidates (top-rerank 50); the script prints a before/after table.
-.venv\Scripts\python rag_eval\eval_reranker.py --tag full --n-questions 200 --top-rerank 50
+#          all 50 candidates (top-rerank 50). The script prints before / replace /
+#          blend side by side. Use a FRESH tag folder for step 3 if an older
+#          rerank_progress.jsonl exists (the checkpoint format changed).
+.venv\Scripts\python rag_eval\eval_reranker.py --tag full --n-questions 200 --top-rerank 50 --dtype float16 --mode blend
 ```
+
+**Update after the first full-corpus run:** "replace" (reranker order alone) made
+things worse on all 200 questions (#1 44.0% → 41.0%). Re-scoring the saved
+rankings offline showed that **blending** the two orders instead (both opinions
+count) recovers the loss and gains a little on top-3/top-5. The engine and the
+eval now default to `blend`; the rerun above measures both from the real code
+path in one go.
 
 - `--pages 25000` = use essentially the whole ~24k-paragraph corpus (the realistic,
   hard setting where Webiks measured ~36% at #1). Smaller numbers = easier/faster.
@@ -118,6 +127,8 @@ RERANK_ENABLED=TRUE
 RERANK_MODEL=BAAI/bge-reranker-v2-m3
 RERANK_TOP=50          # on a GPU you can rerank all candidates; use 20 on CPU
 RERANK_MAX_SEQ=512
+RERANK_MODE=blend      # "blend" = merge with search order (default); "replace" = reranker only
+RERANK_BLEND_K=5
 ```
 
 With `RERANK_ENABLED=FALSE` (the default) the system behaves exactly as the
