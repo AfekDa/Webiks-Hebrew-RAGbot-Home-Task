@@ -6,7 +6,10 @@ MODEL_LOCATION = os.getenv("MODEL_LOCATION", "model")
 
 
 def _as_bool(value: str) -> bool:
-    return str(value).strip().lower() in ("1", "true", "yes", "on")
+    normalized = value.strip().lower()
+    if normalized not in ("true", "false"):
+        raise ValueError("RERANK_ENABLED must be true or false")
+    return normalized == "true"
 
 
 # --- Optional reranker (a more careful second pass over search results) ---
@@ -17,4 +20,7 @@ RERANK_ENABLED = _as_bool(os.getenv("RERANK_ENABLED", "false"))
 RERANK_MODEL = os.getenv("RERANK_MODEL", "BAAI/bge-reranker-v2-m3")
 RERANK_TOP = int(os.getenv("RERANK_TOP", "20"))
 RERANK_MAX_SEQ = int(os.getenv("RERANK_MAX_SEQ", "512"))
+RERANK_DTYPE = os.getenv("RERANK_DTYPE", "float32")
+if RERANK_DTYPE not in ("float32", "float16"):
+    raise ValueError("RERANK_DTYPE must be float32 or float16")
 

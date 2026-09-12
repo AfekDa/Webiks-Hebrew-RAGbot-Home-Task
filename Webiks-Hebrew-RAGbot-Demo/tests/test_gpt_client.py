@@ -111,6 +111,18 @@ def test_gpt_client_initialization(gpt_client):
     assert hasattr(gpt_client, 'configs_class')
 
 
+def test_mock_client_needs_no_api_key(monkeypatch, config_class):
+    monkeypatch.setenv("IS_MOCK_GPT_CLIENT", "true")
+    monkeypatch.delenv("OAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with patch("gpt_client.OpenAI") as openai_client:
+        client = GPTClient(config_class)
+        answer, elapsed, tokens = client.answer("question", [{"content": "retrieved text"}])
+    openai_client.assert_not_called()
+    assert "retrieved text" in answer
+    assert (elapsed, tokens) == (0.0, 0)
+
+
 def test_create_body(gpt_client):
     """Test create_body method"""
     query = "מה השעה?"

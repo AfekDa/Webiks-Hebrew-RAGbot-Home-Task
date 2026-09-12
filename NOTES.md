@@ -1,5 +1,10 @@
 # Working Notes — Hebrew RAG Home Task
 
+> Historical notes from before the completed GPU run. For current measurements,
+> setup, and conclusions, use `SUBMISSION.md`, `LOCAL_DEMO.md`, and
+> `rag_eval/results/full/`. The assumptions, status checkboxes, and timing
+> estimates below are retained as history and are not the final findings.
+
 > Scratch / status file. Plain-language, high-level. NOT the final submission.
 > At the end we'll distill the good parts into `SUBMISSION.md`.
 
