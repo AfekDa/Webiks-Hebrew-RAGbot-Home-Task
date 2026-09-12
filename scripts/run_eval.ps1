@@ -10,5 +10,5 @@ if ($LASTEXITCODE -ne 0) { throw 'Corpus embedding failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Baseline evaluation failed.' }
 & $evalPython -u rag_eval/eval_reranker.py --tag full --n-questions 200 --top-rerank 50 --dtype float16 --mode blend --blend-k 5
 if ($LASTEXITCODE -ne 0) { throw 'Reranker evaluation failed.' }
-& $evalPython -u rag_eval/summarize_results.py --tag full
+& $evalPython -u rag_eval/summarize_results.py --tag full --name blend
 if ($LASTEXITCODE -ne 0) { throw 'Result verification/export failed.' }

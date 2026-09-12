@@ -1,0 +1,40 @@
+{
+  "n_questions": 200,
+  "hit1_improved_questions": 24,
+  "hit1_regressed_questions": 30,
+  "hit1_unchanged_questions": 146,
+  "hit1_exact_mcnemar_p": 0.49661743531793345,
+  "paired_bootstrap": {
+    "seed": 42,
+    "resamples": 10000,
+    "confidence": 0.95,
+    "delta_intervals": {
+      "hit@1": [
+        -0.105,
+        0.045
+      ],
+      "hit@3": [
+        -0.165,
+        -0.015
+      ],
+      "hit@5": [
+        -0.11,
+        0.03
+      ],
+      "hit@10": [
+        -0.07,
+        0.02
+      ],
+      "mrr@10": [
+        -0.09677673611111111,
+        0.012659226190476169
+      ]
+    }
+  },
+  "candidate_hit_rate": 0.96,
+  "rerank_latency_seconds": {
+    "mean": 2.631682301500114,
+    "median": 2.5691680500094662,
+    "p95": 3.301714255006664
+  }
+}

@@ -5,9 +5,16 @@
 it cleanly into the demo backend so it still runs locally.
 
 **What I changed, in one line:** I added a **reranker** - a second, more careful
-model that re-reads the top search results together with the question and re-sorts
-them, so the correct page moves to the top more often. The original search is
-untouched; the reranker sits on top of it and can be switched off.
+model that re-reads the top search results together with the question and gives
+its own opinion on the order. The original search is untouched; the reranker sits
+on top of it and can be switched off.
+
+**What I found, in one line:** measured on the *full* corpus, letting the reranker
+**replace** the search order made results worse; letting it **blend** with the
+search order (both opinions count) recovered the loss and gave a small gain in
+the top 5. The honest headline is a modest gain plus a clear explanation of why a
+strong general reranker cannot beat a search model that was trained on these very
+questions.
 
 ---
 
@@ -49,6 +56,16 @@ the candidates by that score and then collapse to pages exactly as before.
 
 I do **not** replace the fast search — it is still needed to narrow ~24,000
 paragraphs down to 50. I just make better use of those 50.
+
+**Two ways to use the reranker's opinion** (a setting, `RERANK_MODE`):
+
+- **replace** - use the reranker's order alone. The classic setup.
+- **blend** - each candidate gets points from its position in *both* lists (the
+  search order and the reranker order), and the points are added up. A page both
+  models like lands on top; a page only one of them likes is pulled up only
+  part-way. This is called reciprocal rank fusion; the implementation is one
+  small dependency-free file (`rank_fusion.py`) shared by the engine and the
+  evaluation. **This is the default**, because it measured better (section 4).
 
 ### Why this improvement, over the alternatives
 
@@ -95,34 +112,61 @@ not on top* — is exactly what reranking targets.
 
 ## 4. Results
 
-Measured on **100 questions**, searching a **2,000-page** subset, reranking each
-question's **top 20** candidates. "Before" and "after" use the *identical* questions
-and candidate lists, so the comparison is exact.
+Measured on **200 questions** against the **full corpus** (all 24,487 paragraphs,
+7,007 pages), reranking each question's **top 50** candidates on a GPU. "Before"
+and both "after" columns use the *identical* questions and candidate lists, so the
+only thing that differs is the order.
 
-| How often the correct page is… | Before (search only) | After (+ reranker) | Change |
+| How often the correct page is… | Before (search only) | Reranker **replaces** order | Reranker **blended** with order |
 |---|---|---|---|
-| ranked **#1** | `__._%` | `__._%` | `+_._` |
-| in the top 3 | `__._%` | `__._%` | `+_._` |
-| in the top 5 | `__._%` | `__._%` | `+_._` |
-| in the **top 10** | `__._%` | `__._%` | `+_._` |
-| MRR@10 ("how high up", avg) | `_.___` | `_.___` | `+_.___` |
+| ranked **#1** | 44.0% | 41.0% (-3.0) | 42.5% (-1.5) |
+| in the top 3 | 70.5% | 61.5% (-9.0) | 70.5% (0.0) |
+| in the top 5 | 78.5% | 74.5% (-4.0) | **81.5% (+3.0)** |
+| in the **top 10** | 89.5% | 87.0% (-2.5) | 89.5% (0.0) |
+| MRR@10 ("how high up", avg) | 0.588 | 0.546 (-0.042) | 0.584 (-0.004) |
 
-> _Numbers pending the full run (~3 h on this CPU); filled in from
-> `rag_eval/cache/main/reranker_results.json` when it completes._
+**Reading the table honestly:**
 
-For context, our search-only baseline on a larger 200-question / 2,000-page run was
-**76.5% at #1, 98.0% in the top 10, MRR@10 = 0.852** — a strong baseline (see
-limitation below), with a ~21-in-100 gap between "in the top 10" and "at #1" for the
-reranker to close.
+- **Replacing the search order hurts, and the top-3 drop is real.** A paired
+  bootstrap on the 200 questions puts the top-3 change between -16.5 and -1.5
+  points, so it is not noise. Per question: the reranker fixed 24 #1 answers and
+  broke 30.
+- **Blending recovers the loss and adds a little.** Top 5 goes up 3 points; #1
+  and MRR are within a hair of baseline. The top-5 gain's range is -2.0 to +8.0
+  points, so on 200 questions it is *promising but not statistically conclusive*.
+  Blending changed the #1 answer for only 29 questions (13 fixed, 16 broken).
+- **The candidates are fine.** The correct page is somewhere in the 50
+  candidates for 96% of questions. The reranker has room to move it up; it just
+  is not better than the trained search at deciding *which* one.
+
+**Why a strong reranker loses here.** The Hebrew search model Webiks ships was
+fine-tuned on this exact QA file (it is literally the *training* dataset). So the
+"before" column is a model that has already seen every test question, which is
+why it scores 44% at #1 here versus the ~36% Webiks reports on unseen questions.
+A general multilingual reranker that has never seen Kol-Zchut is competing with a
+model that memorised the answer key. Blending works because it keeps the trained
+model's opinion in play instead of discarding it.
+
+Speed on a GPU: about 2 seconds per question to re-read all 50 candidates in
+half precision. All per-question rankings, scores, confidence intervals and file
+hashes are in `rag_eval/results/blend/` and `rag_eval/results/replace/` for review.
 
 ---
 
 ## 5. Integrating it into the Demo backend
 
 - The reranker is added as an **optional step inside the engine's search**, off by
-  default — with it off, behavior is byte-for-byte the original.
-- It re-reads only the **top 20** candidates (not all 50) so a single query stays
-  responsive on a CPU; the model loads once at startup.
+  default — with it off, behavior is byte-for-byte the original. Settings:
+  `RERANK_ENABLED`, `RERANK_MODEL`, `RERANK_TOP`, `RERANK_MAX_SEQ`, `RERANK_DTYPE`,
+  `RERANK_MODE` (blend / replace) and `RERANK_BLEND_K`. Bad values fail at startup
+  with a clear message.
+- How many candidates it re-reads is a setting (`RERANK_TOP`): all 50 on a GPU,
+  20 on a CPU so a single query stays responsive. The model loads once at startup.
+- Unit tests cover: reranking happens *before* pages are collapsed (so the best
+  paragraph of a page is the one kept), the un-reranked tail keeps its order, tie
+  handling, half-precision score ordering, the blend arithmetic, and invalid
+  settings. A separate check (`scripts/verify_demo.py`) queries the running HTTP
+  API and compares its page order with the offline evaluation.
 - The answer (LLM) step is left behind a small swappable interface with a **mock**
   option, so the whole backend runs **locally with no API key**.
 - No change to Elasticsearch, the corpus, or the trained model — the reranker is a
@@ -132,17 +176,27 @@ reranker to close.
 
 ## 6. Honest limitations
 
-- **Strong baseline.** The QA questions are the same set Webiks' embedder was trained
-  on, so the search already "knows" them and scores high — leaving less room to
-  improve. Any gain here is therefore meaningful, and the reranker (a *separate*
-  signal) is a safer bet than beating the trained model at its own step.
-- **Easier exam than production.** Our 2,000-page subset is smaller than the full
-  ~24,000-paragraph corpus, so absolute numbers look higher than Webiks' own
-  (~36% at #1). It is still a *fair* before/after because the reranker faces the
-  exact same subset.
-- **CPU speed.** This machine has no GPU, so the reranker is slow (~5 s per page-read).
-  That is why the evaluation uses a subset and reranks the top 20; on a GPU it would
-  be near-instant, and the accuracy gain carries over unchanged.
+- **The test questions are the search model's training questions.** There is no
+  held-out set in the assignment data, so every number here is measured on
+  questions the baseline has already seen. This inflates "before" and
+  systematically disadvantages any add-on model. On genuinely new user questions
+  I would expect the reranker to help more, but I cannot show that with this data.
+  The fair fix is a held-out set of fresh questions, which was out of scope for 72
+  hours.
+- **200 questions is not many.** The top-5 gain from blending is real on this
+  sample but its confidence range still crosses zero. A convincing claim needs
+  roughly 4x the questions.
+- **Blend strength was chosen on the same 200 questions.** I picked `k = 5` by
+  re-scoring the saved rankings offline and then re-ran the real code path to
+  confirm. That is a mild form of tuning on the test set; a held-out set would
+  settle it.
+- **Latency.** Re-reading 50 candidates costs about 2 s per question on a GPU and
+  minutes on a CPU. For a CPU-only deployment, `RERANK_TOP=20` or the reranker off
+  is the practical choice. Blending also happens to be safer here: shallow
+  reranking (top 5-10 pages) scored as well as deep in the offline re-scoring.
+- **An earlier, easier test agreed.** On a 2,000-page subset with 100 questions,
+  "replace" also slightly hurt (#1 75% to 72%). That run is what motivated moving
+  to the full corpus and then to blending.
 
 ---
 
@@ -151,16 +205,24 @@ reranker to close.
 From the project root, with the data + model in place (see `UPSTREAM.md`):
 
 ```
-# 1. Build the test set + embed the pages once (slow, cached):
-.venv\Scripts\python rag_eval\build_subset.py --questions 200 --pages 2000 --tag main
+# 1. Build the test set + embed the full corpus once (minutes on a GPU, cached):
+.venv\Scripts\python rag_eval\build_subset.py --questions 200 --pages 25000 --tag full
 
 # 2. Baseline (search only):
-.venv\Scripts\python rag_eval\eval_baseline.py --tag main
+.venv\Scripts\python rag_eval\eval_baseline.py --tag full
 
-# 3. Reranker before/after on the same questions:
-.venv\Scripts\python rag_eval\eval_reranker.py --tag main --n-questions 100 --top-rerank 20
+# 3. Reranker: prints before / replace / blend side by side from one run:
+.venv\Scripts\python rag_eval\eval_reranker.py --tag full --n-questions 200 --top-rerank 50 --dtype float16 --mode blend
+
+# 4. Confidence intervals, per-question wins/losses, export for review:
+.venv\Scripts\python rag_eval\summarize_results.py --tag full --name blend
 ```
+
+Or run all four with `scripts\run_eval.ps1`. Everything is resumable: a stopped
+run continues where it left off. Drop `--dtype float16` on a CPU.
 
 Code layout: `rag_eval/common.py` (shared retrieval logic, mirrors the real engine),
 `build_subset.py` (one-time prep), `eval_baseline.py` (before), `eval_reranker.py`
-(after). See `rag_eval/README.md` for a fuller walkthrough.
+(after), `summarize_results.py` (statistics + export). Engine side:
+`webiks_hebrew_ragbot/reranker.py`, `rank_fusion.py`, `config.py`, and the hook in
+`engine.py`. See `rag_eval/README.md` and `LOCAL_DEMO.md` for fuller walkthroughs.

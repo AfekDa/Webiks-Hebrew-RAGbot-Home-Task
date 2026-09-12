@@ -10,7 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tag", default="full")
+    parser.add_argument("--tag", default="full", help="cache folder to read (rag_eval/cache/<tag>)")
+    parser.add_argument("--name", default=None,
+                        help="results folder to write (rag_eval/results/<name>); defaults to the tag")
     parser.add_argument("--url", default="http://127.0.0.1:5000")
     args = parser.parse_args()
     cache = ROOT / "rag_eval/cache" / args.tag
@@ -43,7 +45,7 @@ def main():
         }
         checks.append(check)
         print(json.dumps(check), flush=True)
-    output = ROOT / "rag_eval/results" / args.tag
+    output = ROOT / "rag_eval/results" / (args.name or args.tag)
     output.mkdir(parents=True, exist_ok=True)
     (output / "demo_verification.json").write_text(json.dumps({
         "url": args.url, "health_status": health.status_code, "checks": checks,
