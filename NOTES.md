@@ -76,8 +76,55 @@ no re-indexing. Full numbers and limitations: `SUBMISSION.md` section 4 and 6.
 - [x] Hybrid BM25 + dense: built, measured — **rejected**
 - [x] Page scoring: built, integrated (optional, on in the local demo), measured on 500 fresh questions — **shipped**
 - [x] `SUBMISSION.md` written around the shipped result
-- [ ] 2–3 slides for the interview
+- [x] 2–3 slides for the interview (in `slides/`; export a PDF from the canvas to present)
 - [ ] Run `scripts/verify_demo.py` once on the GPU PC against the live API and commit its output
+
+---
+
+## File map — what each file we added is for
+
+Plain one-liners so a reviewer (or future me) knows why each file exists.
+Everything not listed here is the original upstream Webiks code, unchanged.
+
+**The write-up and this diary**
+- `SUBMISSION.md` — the graded 1–2 page write-up: the improvement, why, results, limits.
+- `NOTES.md` — this working diary (the reasoning trail; not the graded doc).
+- `README.md` — repo front page: what shipped, the one headline number, where to look.
+- `LOCAL_DEMO.md` — how to run the upgraded backend locally (Elasticsearch, seed, launch).
+- `UPSTREAM.md` — where the big files (corpus, model, QA) come from; how to set up the env.
+- `HANDOFF.md` — **internal**, written to move work between my two PCs. Stale (still says "reranker"); safe to delete before submitting.
+
+**The shipped improvement (page scoring)** — in the search engine
+- `webiks_hebrew_ragbot/page_order.py` — the scoring rule itself (one small, dependency-free function). Shared by the engine and the evaluation so both behave identically.
+- `webiks_hebrew_ragbot/page_scoring.py` — wraps that rule for the live engine: groups the search hits by page, embeds the titles, reorders.
+- `webiks_hebrew_ragbot/engine.py` / `config.py` — **edited** to call page scoring as an optional step (off by default) with validated settings.
+- `tests/test_page_scoring.py` — unit tests for the rule and the engine wiring.
+
+**The two ideas I tried and rejected** — kept as evidence for the write-up
+- `webiks_hebrew_ragbot/reranker.py` — the cross-encoder (BGE) reranker step. Optional, off. Rejected.
+- `webiks_hebrew_ragbot/rank_fusion.py` — the "combine two rankings" maths (used by the reranker's blend mode and by the hybrid eval).
+- `tests/test_reranker.py`, `tests/test_rank_fusion.py` — their unit tests.
+
+**The evaluation harness** — proves the before/after honestly (`rag_eval/`)
+- `common.py` — shared logic; reproduces the real engine's search offline in plain maths.
+- `build_subset.py` — step 1: pick questions, gather pages, embed them once (slow, cached).
+- `eval_baseline.py` — step 2: measure today's system (the "before"); save each question's 50 candidates.
+- `eval_page_scoring.py` — the shipped improvement's before/after, dev/held-out split.
+- `eval_reranker.py`, `sweep_blend.py`, `summarize_results.py` — the reranker's evaluation, its no-model tuning sweep, and its stats/export. Evidence for the rejection.
+- `eval_hybrid.py` — the dense+BM25 hybrid evaluation. Evidence for that rejection.
+- `README.md` — walkthrough of the harness.
+- `results/page_scoring_500/`, `results/page_scoring_200/` — the shipped result (headline + earlier pilot).
+- `results/replace/`, `results/blend/` — the reranker's committed numbers.
+
+**Running it**
+- `scripts/run_eval.ps1` — one command: baseline + the 500-question page-scoring run (alternatives behind a flag).
+- `scripts/seed_demo.py` — load the corpus into local Elasticsearch for the demo.
+- `scripts/run_demo.py` — launch the backend locally with page scoring on and a mock answer step (no API key).
+- `scripts/verify_demo.py` — send held-out questions to the running API and check the pages match the offline result.
+
+**The interview slides**
+- `slides/*.dc.html`, `slides/canvas.json` — the three slides (problem / fix / results), editable source.
+- `slides/hebrew-rag-page-scoring-slides.html` — the built, viewable slide file (~2.5 MB). Big; consider not committing it and delivering the PDF instead.
 
 ---
 
