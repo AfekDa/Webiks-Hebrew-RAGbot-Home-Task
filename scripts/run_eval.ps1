@@ -15,7 +15,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Baseline evaluation failed.' }
 #    reusing the same embeddings. Settings are picked on 250 questions and
 #    confirmed on the other 250. Exported to rag_eval/results/page_scoring_500.
 if (-not (Test-Path -LiteralPath 'rag_eval/cache/full500/para_emb.npy')) {
-  & $evalPython -u rag_eval/build_subset.py --questions 500 --pages 25000 --tag full500 --reuse-paragraph-cache full --exclude-questions-from full
+  & $evalPython -u rag_eval/build_subset.py --questions 500 --pages 25000 --tag full500 --seed 1729 --reuse-paragraph-cache full --exclude-questions-from full
   if ($LASTEXITCODE -ne 0) { throw 'Building the 500-question set failed.' }
 }
 & $evalPython -u rag_eval/eval_baseline.py --tag full500

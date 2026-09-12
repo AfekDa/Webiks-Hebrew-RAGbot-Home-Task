@@ -35,7 +35,7 @@ but the split does stop us from fooling ourselves with a hand-picked setting.
    resumable chunks. Despite its name, `--pages` is a paragraph count.
 2. `eval_baseline.py --tag full` measures today's system and saves each question's
    top-50 candidates.
-3. **Headline.** `build_subset.py --questions 500 --tag full500 --reuse-paragraph-cache full
+3. **Headline.** `build_subset.py --questions 500 --tag full500 --seed 1729 --reuse-paragraph-cache full
    --exclude-questions-from full` builds a 500-question set with no overlap with
    the 200, reusing the same embeddings (validated, not recomputed). Then
    `eval_baseline.py --tag full500` and
