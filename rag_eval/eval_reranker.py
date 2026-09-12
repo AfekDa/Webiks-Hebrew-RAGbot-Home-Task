@@ -24,18 +24,25 @@ Usage:
     .venv/Scripts/python rag_eval/eval_reranker.py --tag main --n-questions 100 --top-rerank 20
 """
 import argparse, json, os, time
-# Force offline: everything is already on disk, and the network here is flaky.
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
-os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
-import common
 
-# Where the downloaded BGE model lives on disk (loaded straight from here).
-DEFAULT_MODEL = os.path.join(
+# If the BGE model is already downloaded on this machine, load it straight from
+# disk and run offline (so a flaky network can't interfere). On a fresh machine
+# the folder won't exist, so we fall back to the Hugging Face id and let it
+# download normally the first time.
+_LOCAL_MODEL = os.path.join(
     os.path.expanduser("~"),
     ".cache", "huggingface", "hub",
     "models--BAAI--bge-reranker-v2-m3",
     "snapshots", "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
 )
+if os.path.isdir(_LOCAL_MODEL):
+    DEFAULT_MODEL = _LOCAL_MODEL
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+else:
+    DEFAULT_MODEL = "BAAI/bge-reranker-v2-m3"   # downloads on first use
+
+import common
 
 
 def dedup_to_pages(para_idx_order, para_doc_ids):
@@ -81,18 +88,47 @@ def main():
     print(f"  loaded in {time.perf_counter()-t_load:.0f}s", flush=True)
 
     ks = (1, 3, 5, 10)
-    base_agg = {k: 0 for k in ks}; base_mrr = 0.0     # baseline on this same subset
-    rr_agg = {k: 0 for k in ks};   rr_mrr = 0.0        # reranker
+    # Checkpoint file: one line per finished question. We append+flush after each
+    # question, so if the run is killed we lose at most one question and can
+    # resume. Re-running skips questions already recorded here.
+    prog_path = os.path.join(out, "rerank_progress.jsonl")
+    done = {}
+    if os.path.exists(prog_path):
+        for line in open(prog_path, encoding="utf-8"):
+            line = line.strip()
+            if line:
+                rec = json.loads(line)
+                done[rec["qi"]] = rec
+        print(f"resuming: {len(done)} questions already done", flush=True)
+
+    def write_results():
+        recs = list(done.values())
+        n = len(recs)
+        if n == 0:
+            return None, None
+        def avg(side, idx): return sum(r[side][idx] for r in recs) / n
+        baseline = {"hit@1": avg("b", 0), "hit@3": avg("b", 1), "hit@5": avg("b", 2),
+                    "hit@10": avg("b", 3), "mrr@10": avg("b", 4)}
+        result = {"tag": args.tag, "model": args.model, "n_questions": n,
+                  "top_rerank": args.top_rerank, "n_paragraphs": len(paras),
+                  "hit@1": avg("r", 0), "hit@3": avg("r", 1), "hit@5": avg("r", 2),
+                  "hit@10": avg("r", 3), "mrr@10": avg("r", 4),
+                  "baseline_same_subset": baseline}
+        json.dump(result, open(os.path.join(out, "reranker_results.json"), "w"), indent=2)
+        return result, baseline
+
+    prog_f = open(prog_path, "a", encoding="utf-8")
     t0 = time.perf_counter()
+    processed = 0
     for qi, c in enumerate(candidates):
+        if qi in done:
+            continue
         cand = c["cand_para_idx"]                       # top-50 in the baseline's order
         accepted = set(c["accepted"])
 
         # --- baseline: original order, dedup to pages ---
         b_pages = dedup_to_pages(cand, para_doc_ids)
         b_hits, b_rr, _ = common.score_ranking(b_pages, accepted, ks)
-        for k in ks: base_agg[k] += int(b_hits[k])
-        base_mrr += b_rr
 
         # --- reranker: re-read the top N, re-sort them, keep the rest behind ---
         head = cand[:args.top_rerank]
@@ -102,23 +138,29 @@ def main():
         head_sorted = [head[j] for j in sorted(range(len(head)), key=lambda j: -scores[j])]
         r_pages = dedup_to_pages(head_sorted + tail, para_doc_ids)
         r_hits, r_rr, _ = common.score_ranking(r_pages, accepted, ks)
-        for k in ks: rr_agg[k] += int(r_hits[k])
-        rr_mrr += r_rr
 
-        if (qi + 1) % 5 == 0:
+        rec = {"qi": qi,
+               "b": [int(b_hits[1]), int(b_hits[3]), int(b_hits[5]), int(b_hits[10]), b_rr],
+               "r": [int(r_hits[1]), int(r_hits[3]), int(r_hits[5]), int(r_hits[10]), r_rr]}
+        done[qi] = rec
+        prog_f.write(json.dumps(rec) + "\n"); prog_f.flush()
+        processed += 1
+
+        if processed % 5 == 0:
             el = (time.perf_counter() - t0) / 60
-            eta = el / (qi + 1) * (len(candidates) - qi - 1)
-            print(f"  {qi+1}/{len(candidates)}  ({el:.1f} min, ~{eta:.0f} min left)", flush=True)
+            todo = len(candidates) - len(done)
+            eta = el / processed * todo
+            print(f"  {len(done)}/{len(candidates)}  ({el:.1f} min this run, ~{eta:.0f} min left)",
+                  flush=True)
+            write_results()   # keep an up-to-date partial result on disk
+    prog_f.close()
 
-    n = len(candidates)
-    baseline = {"hit@1": base_agg[1]/n, "hit@3": base_agg[3]/n, "hit@5": base_agg[5]/n,
-                "hit@10": base_agg[10]/n, "mrr@10": base_mrr/n}
-    result = {"tag": args.tag, "model": args.model, "n_questions": n,
-              "top_rerank": args.top_rerank, "n_paragraphs": len(paras),
-              "hit@1": rr_agg[1]/n, "hit@3": rr_agg[3]/n, "hit@5": rr_agg[5]/n,
-              "hit@10": rr_agg[10]/n, "mrr@10": rr_mrr/n,
-              "baseline_same_subset": baseline}
-    json.dump(result, open(os.path.join(out, "reranker_results.json"), "w"), indent=2)
+    result, baseline = write_results()
+    if result is None or baseline is None:
+        print("no questions processed -- nothing to report", flush=True)
+        return
+    assert result is not None and baseline is not None
+    n = result["n_questions"]
 
     def pct(x): return f"{x*100:5.1f}%"
     rows = [("correct page at #1", "hit@1"), ("correct page in top3", "hit@3"),
