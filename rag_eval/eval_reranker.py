@@ -23,7 +23,7 @@ Run eval_baseline.py first with the same --tag (it saves candidates.json).
 Usage:
     .venv/Scripts/python rag_eval/eval_reranker.py --tag main --n-questions 100 --top-rerank 20
 """
-import argparse, json, os, time
+import argparse, hashlib, json, os, time
 
 # If the BGE model is already downloaded on this machine, load it straight from
 # disk and run offline (so a flaky network can't interfere). On a fresh machine
@@ -67,31 +67,65 @@ def main():
                     help="how many questions to test (from the cache)")
     ap.add_argument("--seq", type=int, default=512, help="most text to read per pair")
     ap.add_argument("--batch", type=int, default=16)
+    ap.add_argument("--dtype", choices=["float32", "float16"], default="float32")
     ap.add_argument("--threads", type=int, default=max(1, (os.cpu_count() or 2) // 2),
                     help="CPU threads (default = physical cores, avoids thrashing)")
     args = ap.parse_args()
+    if min(args.top_rerank, args.n_questions, args.seq, args.batch, args.threads) < 1:
+        ap.error("reranking limits, batch size and threads must be positive")
     out = common.cache_dir(args.tag)
 
     paras = json.load(open(os.path.join(out, "paras.json"), encoding="utf-8"))
     candidates = json.load(open(os.path.join(out, "candidates.json"), encoding="utf-8"))
     candidates = candidates[:args.n_questions]
+    if not candidates:
+        raise ValueError("No candidates to evaluate; run eval_baseline.py first")
     para_doc_ids = [p["doc_id"] for p in paras]
     print(f"cache '{args.tag}': testing {len(candidates)} questions, "
           f"reranking top {args.top_rerank} of each, {len(paras)} paragraphs", flush=True)
 
+    # Refuse to mix checkpoints from different data or model settings.
+    manifest = {
+        "model": args.model, "top_rerank": args.top_rerank, "seq": args.seq, "dtype": args.dtype,
+        "score_transform": "raw_logits",
+        "tie_break": "doc_id_content",
+        "n_questions": len(candidates),
+        "data_sha256": hashlib.sha256(json.dumps(
+            [paras, candidates], ensure_ascii=False, sort_keys=True
+        ).encode("utf-8")).hexdigest(),
+    }
+    manifest_path = os.path.join(out, "rerank_config.json")
+    prog_path = os.path.join(out, "rerank_progress.jsonl")
+    if os.path.exists(manifest_path):
+        with open(manifest_path, encoding="utf-8") as f:
+            if json.load(f) != manifest:
+                raise ValueError("Reranker cache settings changed; use a fresh cache tag")
+    elif os.path.exists(prog_path):
+        raise ValueError("Reranker checkpoint has no configuration; use a fresh cache tag")
+    else:
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, indent=2)
+
     import torch
     torch.set_num_threads(args.threads)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if args.dtype == "float16" and device != "cuda":
+        raise RuntimeError("float16 reranking requires CUDA; use --dtype float32 on CPU")
     from sentence_transformers import CrossEncoder
     print(f"loading reranker (threads={args.threads}) ...", flush=True)
     t_load = time.perf_counter()
-    reranker = CrossEncoder(args.model, max_length=args.seq)
+    reranker = CrossEncoder(args.model, max_length=args.seq, device=device)
+    reranker.model.to(device=device, dtype=getattr(torch, args.dtype))
     print(f"  loaded in {time.perf_counter()-t_load:.0f}s", flush=True)
+    runtime = {
+        "torch": torch.__version__, "device": str(reranker.model.device),
+        "dtype": str(next(reranker.model.parameters()).dtype),
+    }
 
     ks = (1, 3, 5, 10)
     # Checkpoint file: one line per finished question. We append+flush after each
     # question, so if the run is killed we lose at most one question and can
     # resume. Re-running skips questions already recorded here.
-    prog_path = os.path.join(out, "rerank_progress.jsonl")
     done = {}
     if os.path.exists(prog_path):
         for line in open(prog_path, encoding="utf-8"):
@@ -113,7 +147,9 @@ def main():
                   "top_rerank": args.top_rerank, "n_paragraphs": len(paras),
                   "hit@1": avg("r", 0), "hit@3": avg("r", 1), "hit@5": avg("r", 2),
                   "hit@10": avg("r", 3), "mrr@10": avg("r", 4),
-                  "baseline_same_subset": baseline}
+                  "baseline_same_subset": baseline,
+                  "runtime": runtime,
+                  "mean_rerank_seconds": sum(r["rerank_seconds"] for r in recs) / n}
         json.dump(result, open(os.path.join(out, "reranker_results.json"), "w"), indent=2)
         return result, baseline
 
@@ -134,14 +170,22 @@ def main():
         head = cand[:args.top_rerank]
         tail = cand[args.top_rerank:]
         pairs = [[c["question"], paras[i]["content"]] for i in head]
-        scores = reranker.predict(pairs, batch_size=args.batch, show_progress_bar=False)
-        head_sorted = [head[j] for j in sorted(range(len(head)), key=lambda j: -scores[j])]
+        t_query = time.perf_counter()
+        scores = reranker.predict(pairs, batch_size=args.batch, show_progress_bar=False,
+                                  activation_fct=torch.nn.Identity())
+        rerank_seconds = time.perf_counter() - t_query
+        head_sorted = [head[j] for j in sorted(range(len(head)), key=lambda j: (
+            -float(scores[j]), str(paras[head[j]]["doc_id"]), paras[head[j]]["content"],
+        ))]
         r_pages = dedup_to_pages(head_sorted + tail, para_doc_ids)
         r_hits, r_rr, _ = common.score_ranking(r_pages, accepted, ks)
 
         rec = {"qi": qi,
                "b": [int(b_hits[1]), int(b_hits[3]), int(b_hits[5]), int(b_hits[10]), b_rr],
-               "r": [int(r_hits[1]), int(r_hits[3]), int(r_hits[5]), int(r_hits[10]), r_rr]}
+               "r": [int(r_hits[1]), int(r_hits[3]), int(r_hits[5]), int(r_hits[10]), r_rr],
+               "baseline_pages": b_pages, "reranked_pages": r_pages,
+               "reranker_scores": [float(s) for s in scores],
+               "rerank_seconds": rerank_seconds}
         done[qi] = rec
         prog_f.write(json.dumps(rec) + "\n"); prog_f.flush()
         processed += 1

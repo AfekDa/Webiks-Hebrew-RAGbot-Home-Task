@@ -83,9 +83,9 @@ class GPTClient(LLMClient):
            config_class (Configs): The configuration class instance.
        """
         super().__init__()
-        self.oai_client = OpenAI(api_key=os.getenv('OAI_API_KEY'))
         self.configs_class = config_class
         self.is_mock_client = os.getenv('IS_MOCK_GPT_CLIENT', "false").lower() == "true"
+        self.oai_client = None if self.is_mock_client else OpenAI(api_key=os.getenv('OAI_API_KEY'))
 
 
     def create_body(self, query, top_k_docs):
@@ -161,7 +161,8 @@ def get_mock_answer(top_k_docs):
            Returns:
                tuple: The mock answer, elapsed time, and token usage.
            """
-    return f"Mock answer with docs___{top_k_docs}", 0.0, 0
+    excerpts = "\n\n".join(doc["content"] for doc in top_k_docs)
+    return f"Mock answer with docs___{excerpts}", 0.0, 0
 
 
 llms_client = None

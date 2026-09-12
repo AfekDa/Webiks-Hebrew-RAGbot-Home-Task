@@ -25,3 +25,6 @@ rag_eval/probe*.py
 # ---- OS ----
 Thumbs.db
 .DS_Store
+
+# Local services and runtime logs
+.runtime/

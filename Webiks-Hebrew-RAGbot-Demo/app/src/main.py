@@ -160,6 +160,7 @@ async def search(params: SearchQuery):
         return result
     except Exception as e:
         logging.error(f"Error during search: {e}")
+        raise
 
 @app.get("/initialize_elastic_from_json")
 async def initialize_elastic_from_json():
