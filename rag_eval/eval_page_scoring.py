@@ -23,47 +23,30 @@ half of the questions (dev) and confirmed once on the untouched second half.
 
     .venv/Scripts/python rag_eval/eval_page_scoring.py --tag full --dev 100
 """
-import argparse, json, os
+import argparse, json, os, sys
 from collections import defaultdict
 import numpy as np
+
+# The scoring rule lives in the engine package, so the live system and this
+# evaluation share one implementation. Import it straight from the source tree.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Webiks-Hebrew-RAGbot"))
+from webiks_hebrew_ragbot.page_order import order_pages
 import common
 
 KS = (1, 3, 5, 10)
 
 
 def page_scores(order, sims, para_doc_ids, title_sim, alpha, lam, margin=None):
-    """Score each page among the top-50 candidate paragraphs.
+    """Page order for one question, from its top-50 candidate paragraphs.
 
     score = best paragraph + alpha * second-best paragraph + lam * title match
-
-    `margin` (optional): only pages whose best paragraph is within `margin` of
-    the top paragraph score compete on the full score; pages further down keep
-    their baseline order behind them. This stops a generic "hub" page with a
-    broad title (e.g. "guide to foster care") from jumping up from far below --
-    the main way the title signal was seen to misfire on a pilot corpus.
-    """
-    per_page = defaultdict(list)
-    for i in order:
-        per_page[para_doc_ids[i]].append(float(sims[i]))
-    top = max(v[0] for v in per_page.values()) if per_page else 0.0
-    scored = []
-    for did, vals in per_page.items():
-        vals.sort(reverse=True)
-        best = vals[0]
-        s = best
-        if alpha and len(vals) > 1:
-            s += alpha * vals[1]
-        if lam:
-            s += lam * title_sim[did]
-        if margin is not None and best < top - margin:
-            s = best - 10.0          # out of the race: stays behind, in baseline order
-        scored.append((s, did))
-    # ties -> keep the baseline (first-seen) order, so the change is deterministic
-    first_pos = {}
+    `margin`: only pages near the top compete (see page_scoring.order_pages)."""
+    per_page, first_pos = defaultdict(list), {}
     for pos, i in enumerate(order):
-        first_pos.setdefault(para_doc_ids[i], pos)
-    scored.sort(key=lambda t: (-t[0], first_pos[t[1]]))
-    return [did for _, did in scored]
+        did = para_doc_ids[i]
+        per_page[did].append(float(sims[i]))
+        first_pos.setdefault(did, pos)
+    return order_pages(per_page, title_sim, first_pos, alpha, lam, margin)
 
 
 def metrics_over(rows_pages, rows_accepted):

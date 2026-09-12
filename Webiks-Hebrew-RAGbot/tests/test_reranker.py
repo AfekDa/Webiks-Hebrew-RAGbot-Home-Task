@@ -70,6 +70,7 @@ def test_rerank_happens_before_page_deduplication():
     engine.elastic_model = Mock()
     engine.elastic_model.search.return_value = hits
     engine.reranker = reranker
+    engine.page_scorer = None
 
     result = engine.search_documents("question", top_k=3)
 

@@ -70,6 +70,13 @@ class Engine:
             from .reranker import Reranker
             self.reranker = Reranker()
 
+        # Optional page scoring: rank pages by best + second paragraph + title
+        # match, using the same retrieval model. Off by default.
+        self.page_scorer = None
+        if config.PAGE_SCORING_ENABLED:
+            from .page_scoring import PageScorer
+            self.page_scorer = PageScorer(self.retrieval_model)
+
 
     def update_docs(self, list_of_docs: list[dict], delete_existing=False):
         """
@@ -122,6 +129,10 @@ class Engine:
         # Optional: let the reranker re-order the candidates before we pick pages.
         if self.reranker is not None:
             all_docs = self.reranker.rerank(query, all_docs)
+
+        # Optional: order pages by best + second paragraph + title match.
+        if self.page_scorer is not None:
+            all_docs = self.page_scorer.reorder(query_embeddings, all_docs)
 
         top_k_documents = []
         top_doc_ids = []
