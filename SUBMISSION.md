@@ -33,7 +33,16 @@ that is actually *about* the question.
 
 ## 2. The improvement: page scoring
 
-For each candidate page, instead of `score = best paragraph`, the engine uses
+The retrieval path changes only after the existing model has produced its 50
+paragraph candidates:
+
+```text
+today: question -> dense search -> 50 paragraphs -> best paragraph per page -> top ~3 pages -> answer
+
+after: question -> dense search -> same 50 paragraphs -> score each candidate page -> top ~3 pages -> answer
+```
+
+The new page score is
 
 ```
 score = best paragraph
@@ -177,7 +186,7 @@ powershell -ExecutionPolicy Bypass -File scripts\run_eval.ps1
 # or step by step
 .venv\Scripts\python rag_eval\build_subset.py --questions 200 --pages 25000 --tag full
 .venv\Scripts\python rag_eval\eval_baseline.py --tag full
-.venv\Scripts\python rag_eval\build_subset.py --questions 500 --pages 25000 --tag full500 --reuse-paragraph-cache full --exclude-questions-from full
+.venv\Scripts\python rag_eval\build_subset.py --questions 500 --pages 25000 --tag full500 --seed 1729 --reuse-paragraph-cache full --exclude-questions-from full
 .venv\Scripts\python rag_eval\eval_baseline.py --tag full500
 .venv\Scripts\python rag_eval\eval_page_scoring.py --tag full500 --dev 250 --name page_scoring_500
 ```
