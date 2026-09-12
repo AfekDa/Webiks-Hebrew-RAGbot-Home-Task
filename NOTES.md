@@ -92,7 +92,6 @@ Everything not listed here is the original upstream Webiks code, unchanged.
 - `README.md` — repo front page: what shipped, the one headline number, where to look.
 - `LOCAL_DEMO.md` — how to run the upgraded backend locally (Elasticsearch, seed, launch).
 - `UPSTREAM.md` — where the big files (corpus, model, QA) come from; how to set up the env.
-- `HANDOFF.md` — **internal**, written to move work between my two PCs. Stale (still says "reranker"); safe to delete before submitting.
 
 **The shipped improvement (page scoring)** — in the search engine
 - `webiks_hebrew_ragbot/page_order.py` — the scoring rule itself (one small, dependency-free function). Shared by the engine and the evaluation so both behave identically.
