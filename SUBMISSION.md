@@ -99,7 +99,7 @@ not regress. This is what separates a real gain from a hand-picked one.
 | in top 3 | 65.6% | 71.6% | +6.0 |
 | in top 5 | 77.2% | 78.4% | +1.2 |
 | in top 10 | 86.8% | 87.6% | +0.8 |
-| MRR@10 | 0.547 | **0.650** | **+0.102** |
+| MRR@10 | 0.547 | **0.650** | **+0.10** |
 
 Chosen on dev: second-paragraph weight 0.25, title weight 0.25, margin 0.05. The
 earlier 200-question pilot on the same corpus pointed the same way (held-out
