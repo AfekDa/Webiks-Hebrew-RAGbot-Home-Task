@@ -38,10 +38,12 @@ if RERANK_BLEND_K < 1:
 # --- Optional page scoring (rank pages by more than their single best paragraph) ---
 # Off by default. Uses the SAME trained model to add a title match and the
 # second-best paragraph to each page's score; only the order of the retrieved
-# candidates changes. See page_scoring.py.
+# candidates changes. See page_scoring.py. The default weights are the ones
+# chosen on 250 development questions and confirmed on 250 held-out questions
+# over the full corpus (rag_eval/results/page_scoring_500).
 PAGE_SCORING_ENABLED = _as_bool(os.getenv("PAGE_SCORING_ENABLED", "false"), "PAGE_SCORING_ENABLED")
-PAGE_SCORING_TITLE_WEIGHT = float(os.getenv("PAGE_SCORING_TITLE_WEIGHT", "0.5"))
-PAGE_SCORING_SECOND_WEIGHT = float(os.getenv("PAGE_SCORING_SECOND_WEIGHT", "0"))
+PAGE_SCORING_TITLE_WEIGHT = float(os.getenv("PAGE_SCORING_TITLE_WEIGHT", "0.25"))
+PAGE_SCORING_SECOND_WEIGHT = float(os.getenv("PAGE_SCORING_SECOND_WEIGHT", "0.25"))
 _margin = os.getenv("PAGE_SCORING_MARGIN", "0.05").strip().lower()
 PAGE_SCORING_MARGIN = None if _margin in ("", "none", "off") else float(_margin)
 if PAGE_SCORING_TITLE_WEIGHT < 0 or PAGE_SCORING_SECOND_WEIGHT < 0 \

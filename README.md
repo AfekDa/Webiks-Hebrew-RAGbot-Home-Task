@@ -1,24 +1,31 @@
-# Hebrew RAG retrieval reranker
+# Hebrew RAG retrieval: page scoring
 
-This repository contains the Webiks retrieval engine and Demo backend, with an
-optional BGE cross-encoder between top-50 paragraph retrieval and page selection.
+This repository contains the Webiks retrieval engine and Demo backend with one
+retrieval improvement: **page scoring**. Instead of ranking a page by its single
+best paragraph, the engine also counts how well the question matches the page
+*title* and the page's *second-best* paragraph, using the same trained Hebrew
+model. Only the order of the retrieved candidates changes; no new model, no
+re-indexing.
 
-- [Submission: approach, evaluation, and limitations](SUBMISSION.md)
-- [Local backend setup and API commands](LOCAL_DEMO.md)
-- [Data/model downloads and Python environment](UPSTREAM.md)
-- [Evaluation scripts](rag_eval/)
+On the full 24,487-paragraph corpus, measured on 250 held-out questions the
+weights were never tuned on, the correct page lands at #1 for **54.8%** of
+questions versus **38.8%** before (+16 points), MRR@10 0.547 → 0.650, with
+top-5 unchanged.
 
-The backend installs the modified engine from this checkout. Its local launcher
-uses real Elasticsearch retrieval and a mock answer generator, so no API key is
-needed. Invalid reranker settings and missing paragraph fields raise errors.
+- [SUBMISSION.md](SUBMISSION.md) — the improvement, why, how it was measured, results, limitations
+- [LOCAL_DEMO.md](LOCAL_DEMO.md) — run the upgraded backend locally (no API key needed)
+- [UPSTREAM.md](UPSTREAM.md) — data/model downloads and the Python environment
+- [rag_eval/](rag_eval/) — the evaluation scripts and committed results
 
-Run the full GPU evaluation from the repository root:
+Two alternatives were built, integrated and evaluated the same way, and
+rejected because they lowered the first result on held-out questions: a
+cross-encoder reranker (BGE) and hybrid dense + BM25 retrieval. Both remain in
+the code, off by default, with their results committed.
+
+Run the full evaluation from the repository root (GPU):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/run_eval.ps1
 ```
 
-Large assets and intermediate embeddings are ignored by Git. Verified evaluation
-results are exported for review under `rag_eval/results/`: `blend/` is the
-headline run (reranker merged with the search order, the engine default) and
-`replace/` is the reranker-only run it is compared against.
+Large assets and intermediate embeddings are ignored by Git.

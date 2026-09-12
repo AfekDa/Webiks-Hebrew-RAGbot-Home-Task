@@ -1,4 +1,4 @@
-﻿# Retrieval evaluation
+# Retrieval evaluation
 
 Run from the repository root after following `UPSTREAM.md`:
 
@@ -9,64 +9,69 @@ powershell -ExecutionPolicy Bypass -File scripts/run_eval.ps1
 The runbook requires a working CUDA device and stops immediately if a step fails.
 The individual Python scripts can also run on CPU, but take substantially longer.
 
-## Steps
+## What it measures
+
+Every script reproduces the real engine's retrieval offline in NumPy: embed the
+question with the same model, cosine against every paragraph, take the top 50,
+collapse to unique pages. That mirrors the engine's Elasticsearch `script_score`
+query and page selection; small floating-point or tie-order differences remain
+possible between implementations.
+
+**Metrics.** An accepted answer is a page (`doc_id`); a question can have several.
+Hit@k is one when any accepted page is among the first k returned pages. MRR@10
+is the reciprocal rank of the first accepted page, or zero outside the first
+ten. These are retrieval proxies; they do not evaluate generated answers.
+
+**Discipline.** Every improvement is tuned on the first half of the questions
+(dev) and reported once on the untouched second half (held-out), and shipped only
+if held-out Hit@1 or MRR improves while Hit@5 does not regress. The QA data was
+used to train the embedder, so none of this is a true out-of-domain estimate,
+but the split does stop us from fooling ourselves with a hand-picked setting.
+
+## Steps in the runbook
 
 1. `build_subset.py --questions 200 --pages 25000 --tag full` selects 200 questions
-   with seed 42 and embeds the complete 24,487-paragraph corpus (7,007 pages).
-   Despite its name, `--pages` specifies a paragraph count. Smaller runs include
-   all accepted pages' paragraphs plus sampled distractor paragraphs.
-2. `eval_baseline.py --tag full` embeds the questions, computes cosine similarity
-   against every paragraph, selects 50 paragraphs, and collapses them to unique
-   page IDs in first-seen order. This mirrors the engine's Elasticsearch
-   `script_score` query and page selection using NumPy. Small floating-point or
-   tie-order differences remain possible between implementations.
-3. `eval_reranker.py --tag full --n-questions 200 --top-rerank 50 --dtype float16 --mode blend`
-   reranks those exact candidates with `BAAI/bge-reranker-v2-m3`, then applies the
-   same page deduplication. The reranker uses CUDA float16 and raw logits; the
-   embedder remains float32. Both models use a 512-token limit. Paragraph order is
-   the only retrieval change; no query rewriting or new candidates.
-   Two ways of using the reranker are measured in the same run and printed side
-   by side: `replace` (reranker order alone) and `blend` (reranker order merged
-   with the search order by reciprocal rank fusion, `--blend-k`, shared code in
-   `webiks_hebrew_ragbot/rank_fusion.py`). `--mode` picks which is the headline
-   "after" number and which order is saved as `reranked_pages`.
-4. `summarize_results.py --tag full --name blend` verifies that per-question metrics reproduce
-   the saved summaries and exports results to `rag_eval/results/<name>/`
-   (`blend/` and `replace/` are the two committed runs). It also
-   computes paired bootstrap intervals, top-1 wins/losses, candidate recall, and
-   measured reranking latency.
+   (seed 42) and embeds the complete 24,487-paragraph corpus (7,007 pages), in
+   resumable chunks. Despite its name, `--pages` is a paragraph count.
+2. `eval_baseline.py --tag full` measures today's system and saves each question's
+   top-50 candidates.
+3. **Headline.** `build_subset.py --questions 500 --tag full500 --reuse-paragraph-cache full
+   --exclude-questions-from full` builds a 500-question set with no overlap with
+   the 200, reusing the same embeddings (validated, not recomputed). Then
+   `eval_baseline.py --tag full500` and
+   `eval_page_scoring.py --tag full500 --dev 250 --name page_scoring_500`
+   pick the page-scoring weights on 250 questions and confirm on the other 250.
+   The rule (`webiks_hebrew_ragbot/page_order.py`) is the exact code the engine runs.
+4. Optional (`RUN_ALTERNATIVES=1`): the two rejected alternatives.
+   `eval_reranker.py` + `summarize_results.py` (cross-encoder, replace and blend
+   modes), `sweep_blend.py` (no-inference blend/depth sweep with dev/held-out),
+   and `eval_hybrid.py` (dense + BM25 with reciprocal rank fusion).
 
-## Metrics
+## Committed results (`rag_eval/results/`)
 
-An accepted answer is a page (`doc_id`), and a question can have several accepted
-pages. Hit@k is one when any accepted page is among the first k returned pages.
-MRR@10 is the reciprocal rank of the first accepted page, or zero outside the
-first ten. These are retrieval proxies; they do not evaluate generated answers
-or prove that the selected paragraph contains the answer.
+| folder | what |
+|---|---|
+| `page_scoring_500/` | **the submitted improvement**: 500 fresh questions, 250 dev / 250 held-out |
+| `page_scoring_200/` | earlier pilot of the same idea on the first 200 questions (100/100) |
+| `replace/`, `blend/` | cross-encoder reranker, two ways of using it (rejected) |
 
-The QA data was used in development/training of the embedder. This paired
-comparison is not a held-out estimate of generalization. Results from the
-upstream model's validation artifact use a different question selection and
-should not be compared directly with this sample.
+Hybrid dense+BM25 and the blend sweep print their verdicts; both were `SHIP: no`
+on the held-out half and are described in `SUBMISSION.md`.
 
 ## Resume and outputs
 
-Embedding chunks and reranker records are saved under `rag_eval/cache/<tag>/`.
-Re-run with the same parameters to resume. Use a fresh tag when changing the
-embedding selection or model settings. Reranker checkpoints reject changed
-candidate data, model path, precision, score transform, token limit, candidate
-count, blend strength, or question count. Float16 inference can change close rankings; CPU and
-GPU results are not assumed to be numerically identical.
+Embedding chunks and reranker checkpoints live under `rag_eval/cache/<tag>/` and
+resume on re-run. Reranker checkpoints refuse to mix with changed settings; use a
+fresh tag. The full corpus, model files, embeddings, and cache stay out of Git.
 
-Reviewable outputs include summaries, question IDs/accepted pages, per-question
-rankings and scores, confidence intervals, and a manifest with cache hashes.
-The full corpus, model files, embeddings, and temporary cache stay out of Git.
+## Check the live API
 
-After indexing and launching the Demo as described in `LOCAL_DEMO.md`, run:
+After seeding and launching the Demo as in `LOCAL_DEMO.md`:
 
 ```powershell
-.venv/Scripts/python scripts/verify_demo.py --tag full --name blend
+.venv/Scripts/python scripts/verify_demo.py --tag full500 --name page_scoring_500
 ```
 
-This queries the real HTTP API and compares returned page IDs to offline results,
-including cases where reranking changed the first three pages.
+It sends held-out questions to the running backend and checks the returned pages
+match the offline *improved* ranking, including questions where page scoring
+changed the top 3.

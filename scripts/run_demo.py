@@ -20,9 +20,14 @@ def configure():
         "CONVERSATIONS_INDEX": "hebrew_rag_local_conversations",
         "UPDATES_INDEX": "hebrew_rag_local_updates",
         "IS_MOCK_GPT_CLIENT": "true",
-        "RERANK_ENABLED": "true", "RERANK_TOP": "50", "RERANK_MAX_SEQ": "512",
+        # The submitted improvement: page scoring (title match + second paragraph).
+        "PAGE_SCORING_ENABLED": "true", "PAGE_SCORING_TITLE_WEIGHT": "0.25",
+        "PAGE_SCORING_SECOND_WEIGHT": "0.25", "PAGE_SCORING_MARGIN": "0.05",
+        # The evaluated-and-rejected alternative (cross-encoder reranker) stays
+        # available but off; set RERANK_ENABLED=true to try it.
+        "RERANK_ENABLED": "false", "RERANK_TOP": "50", "RERANK_MAX_SEQ": "512",
         "RERANK_DTYPE": "float16", "RERANK_MODE": "blend", "RERANK_BLEND_K": "5",
-        "CODE_VERSION": "local-reranker", "LOG_LEVEL": "INFO",
+        "CODE_VERSION": "local-page-scoring", "LOG_LEVEL": "INFO",
     }
     for key, value in defaults.items():
         os.environ.setdefault(key, value)

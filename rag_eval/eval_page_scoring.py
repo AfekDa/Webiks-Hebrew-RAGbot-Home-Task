@@ -175,14 +175,19 @@ def main():
     print(f"\n  held-out change: Hit@1 {d1:+.1f}, Hit@5 {d5:+.1f}, MRR {dm:+.3f}")
     ship = (d5 >= -tol) and (d1 > tol or dm > tol)
     print(f"  SHIP: {'yes' if ship else 'no'} (rule: Hit@5 not down AND Hit@1 or MRR up, on held-out)")
+    # Per-question held-out rankings (top 10), so the live API can be checked
+    # against the offline result (scripts/verify_demo.py).
+    held = [{"qi": i, "question": questions[i]["question"], "accepted": sorted(accepted[i]),
+             "baseline_pages": pages(i, 0, 0)[:10],
+             "improved_pages": pages(i, alpha, lam, margin)[:10]} for i in test]
     _save(args, out, base_test, label, m_test,
-          {"alpha": alpha, "lam": lam, "margin": margin, "ship": ship})
+          {"alpha": alpha, "lam": lam, "margin": margin, "ship": ship}, held)
 
 
-def _save(args, out, base_test, label, m_test, choice):
+def _save(args, out, base_test, label, m_test, choice, held=None):
     result = {"tag": args.tag, "method": "page scoring: best + second paragraph + title",
               "dev": args.dev, "held_out_baseline": base_test, "held_out_improved": m_test,
-              "chosen": choice, "label": label}
+              "chosen": choice, "label": label, "held_out_questions": held}
     json.dump(result, open(os.path.join(out, "page_scoring_results.json"), "w"), indent=2)
     if args.name:
         dst = os.path.join("rag_eval/results", args.name)

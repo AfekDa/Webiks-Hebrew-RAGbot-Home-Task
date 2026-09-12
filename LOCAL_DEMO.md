@@ -2,8 +2,8 @@
 
 Install the environment and download the assets described in `UPSTREAM.md`.
 Commands below run from the repository root. No OpenAI key is needed; only the
-answer generation is mocked. Retrieval uses the real Hebrew embedder,
-Elasticsearch cosine search, and BGE reranker.
+answer generation is mocked. Retrieval uses the real Hebrew embedder and
+Elasticsearch cosine search, with the submitted **page scoring** step on top.
 
 ## 1. Start Elasticsearch
 
@@ -51,24 +51,31 @@ Open http://127.0.0.1:5000/docs for the API. `/health` returns 200.
 Submit `POST /search` with JSON `{"query":"your Hebrew question","asked_from":"local-demo"}`.
 The response includes retrieved `docs`, a mock `llm_result`, and retrieval timing.
 
-`scripts/run_demo.py` resolves the paths and enables reranking of all 50 candidates
-in `blend` mode (reranker order merged with the search order; set
-`$env:RERANK_MODE='replace'` to use the reranker order alone).
-It uses CUDA float16 for the reranker and sorts raw logits, avoiding sigmoid
-saturation in reduced precision. The embedder remains float32. For CPU inference,
-explicitly set `$env:RERANK_DTYPE='float32'` before launching.
-To compare the baseline in a separate launch, set `$env:RERANK_ENABLED='false'`
-before starting it. Change settings by explicitly setting environment variables;
-restart the process to apply model settings. The server listens only on localhost.
+`scripts/run_demo.py` resolves the paths and turns on **page scoring** with the
+evaluated weights (title 0.25, second paragraph 0.25, margin gate 0.05). It adds
+one small model call per query (embedding the titles of the ≤50 retrieved
+candidates) and works on CPU or GPU. To compare the original behaviour in a
+separate launch, set `$env:PAGE_SCORING_ENABLED='false'` before starting.
+
+The evaluated-and-rejected cross-encoder reranker stays available but off; set
+`$env:RERANK_ENABLED='true'` to try it (downloads BAAI/bge-reranker-v2-m3 on
+first use; on CPU also set `$env:RERANK_DTYPE='float32'`). Change settings by
+setting environment variables and restarting the process. The server listens
+only on localhost.
 
 Stop the backend or Elasticsearch with Ctrl+C in its terminal.
 
 ## Targeted tests
 
 ```powershell
-.venv/Scripts/python -m pytest --import-mode=importlib Webiks-Hebrew-RAGbot/tests/test_reranker.py Webiks-Hebrew-RAGbot-Demo/tests/test_gpt_client.py -q
+.venv/Scripts/python -m pytest --import-mode=importlib Webiks-Hebrew-RAGbot/tests/test_page_scoring.py Webiks-Hebrew-RAGbot/tests/test_rank_fusion.py Webiks-Hebrew-RAGbot/tests/test_reranker.py Webiks-Hebrew-RAGbot-Demo/tests/test_gpt_client.py -q
 ```
 
-These check reranking before page deduplication, retaining the unreranked tail,
-invalid input failures, and key-free mock generation. The existing integration
-suite additionally uses Docker testcontainers.
+These check the page-scoring rule (title lift, second paragraph, margin gate,
+ties), that the engine keeps each page's best paragraph while reordering pages,
+that page scoring off is byte-for-byte the original behaviour, the reranker and
+fusion helpers, invalid settings, and key-free mock generation. The existing
+integration suite additionally uses Docker testcontainers.
+
+To confirm the live API uses the improvement, run `scripts/verify_demo.py` as
+described in `rag_eval/README.md`.
