@@ -1,0 +1,26 @@
+{
+  "tag": "full500",
+  "method": "page scoring: best + second paragraph + title",
+  "dev": 250,
+  "held_out_baseline": {
+    "hit@1": 0.388,
+    "hit@3": 0.656,
+    "hit@5": 0.772,
+    "hit@10": 0.868,
+    "mrr@10": 0.5473174603174601
+  },
+  "held_out_improved": {
+    "hit@1": 0.548,
+    "hit@3": 0.716,
+    "hit@5": 0.784,
+    "hit@10": 0.876,
+    "mrr@10": 0.6497126984126981
+  },
+  "chosen": {
+    "alpha": 0.25,
+    "lam": 0.25,
+    "margin": 0.05,
+    "ship": true
+  },
+  "label": "second x0.25 + title x0.25, gate 0.05"
+}

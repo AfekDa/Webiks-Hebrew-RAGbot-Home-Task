@@ -1,0 +1,26 @@
+{
+  "tag": "full",
+  "method": "page scoring: best + second paragraph + title",
+  "dev": 100,
+  "held_out_baseline": {
+    "hit@1": 0.45,
+    "hit@3": 0.71,
+    "hit@5": 0.8,
+    "hit@10": 0.93,
+    "mrr@10": 0.5980317460317464
+  },
+  "held_out_improved": {
+    "hit@1": 0.5,
+    "hit@3": 0.69,
+    "hit@5": 0.8,
+    "hit@10": 0.9,
+    "mrr@10": 0.6258134920634922
+  },
+  "chosen": {
+    "alpha": 0.0,
+    "lam": 0.5,
+    "margin": null,
+    "ship": true
+  },
+  "label": "second x0 + title x0.5"
+}

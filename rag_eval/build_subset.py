@@ -21,12 +21,12 @@ Usage (from the project root):
 Quick tiny run to check it works (~3 min):
     .venv/Scripts/python rag_eval/build_subset.py --questions 10 --pages 60 --tag smoke
 """
-import argparse, json, math, os, random, time
+import argparse, json, math, os, random, shutil, time
 import numpy as np
 import common
 
 
-def select_pages(args, out):
+def select_pages(args, out, reused_paras=None, excluded_questions=None):
     """Pick the questions and the pages to search, and save them. If a previous
     run already saved them for this tag, reuse them exactly (so the page set and
     its order never change between resumes)."""
@@ -43,8 +43,21 @@ def select_pages(args, out):
     # Only keep questions whose correct pages are in our corpus, then pick at
     # random with a fixed seed (so the same run always picks the same ones).
     corpus_pages = set(r["doc_id"] for r in corpus)
-    usable = [q for q, docs in q2docs.items() if docs <= corpus_pages]
+    excluded_questions = excluded_questions or set()
+    usable = [q for q, docs in q2docs.items()
+              if docs <= corpus_pages and q not in excluded_questions]
+    if len(usable) < args.questions:
+        raise ValueError(f"only {len(usable)} usable questions remain; requested {args.questions}")
     questions = random.sample(usable, min(args.questions, len(usable)))
+
+    if reused_paras is not None:
+        # The source cache has already embedded this exact full corpus.  Keep
+        # its order: para_emb.npy rows correspond to it position-for-position.
+        json.dump([{"question": q, "accepted": sorted(q2docs[q])} for q in questions],
+                  open(questions_path, "w", encoding="utf-8"), ensure_ascii=False)
+        json.dump(vars(args), open(os.path.join(out, "config.json"), "w", encoding="utf-8"), indent=2)
+        print(f"  questions: {len(questions)} | reusing {len(reused_paras)} embedded paragraphs", flush=True)
+        return reused_paras
 
     answer_pages = set()
     for q in questions:
@@ -71,6 +84,35 @@ def select_pages(args, out):
     return search_pages
 
 
+def prepare_reused_embeddings(args, out):
+    """Copy a finished full-corpus cache without recomputing paragraph vectors.
+
+    The cached vectors are valid only for its exact paragraph order.  Validate
+    that source cache before copying so a partial or differently ordered cache
+    cannot silently corrupt an evaluation.
+    """
+    if not args.reuse_paragraph_cache:
+        return None
+    if os.path.exists(os.path.join(out, "paras.json")) or os.path.exists(os.path.join(out, "para_emb.npy")):
+        raise FileExistsError(f"destination cache '{args.tag}' already contains paragraph data")
+    source = common.cache_dir(args.reuse_paragraph_cache)
+    source_paras = os.path.join(source, "paras.json")
+    source_emb = os.path.join(source, "para_emb.npy")
+    if not os.path.isfile(source_paras) or not os.path.isfile(source_emb):
+        raise FileNotFoundError(f"reuse cache '{args.reuse_paragraph_cache}' needs paras.json and para_emb.npy")
+    paras = json.load(open(source_paras, encoding="utf-8"))
+    emb = np.load(source_emb, mmap_mode="r")
+    if emb.ndim != 2 or emb.shape[0] != len(paras):
+        raise ValueError("reuse cache embeddings do not match its paragraph list")
+    corpus = common.load_corpus()
+    if len(paras) != len(corpus) or {p["doc_id"] for p in paras} != {p["doc_id"] for p in corpus}:
+        raise ValueError("reuse cache does not contain the complete current corpus")
+    shutil.copy2(source_paras, os.path.join(out, "paras.json"))
+    shutil.copy2(source_emb, os.path.join(out, "para_emb.npy"))
+    print(f"reused embeddings from cache '{args.reuse_paragraph_cache}'", flush=True)
+    return paras
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--questions", type=int, default=200, help="how many questions to test with")
@@ -80,13 +122,24 @@ def main():
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--chunk", type=int, default=256, help="pages per saved chunk (resume granularity)")
     ap.add_argument("--tag", default="main", help="a name for this saved quiz (folder under rag_eval/cache)")
+    ap.add_argument("--reuse-paragraph-cache", default=None,
+                    help="finished full-corpus cache whose paragraph embeddings to copy")
+    ap.add_argument("--exclude-questions-from", default=None,
+                    help="cache tag whose selected questions must not be sampled again")
     args = ap.parse_args()
     random.seed(args.seed); np.random.seed(args.seed)
 
     out = common.cache_dir(args.tag)
     os.makedirs(out, exist_ok=True)
 
-    search_pages = select_pages(args, out)
+    excluded_questions = set()
+    if args.exclude_questions_from:
+        old_questions = os.path.join(common.cache_dir(args.exclude_questions_from), "questions.json")
+        if not os.path.isfile(old_questions):
+            raise FileNotFoundError(f"exclusion cache '{args.exclude_questions_from}' has no questions.json")
+        excluded_questions = {q["question"] for q in json.load(open(old_questions, encoding="utf-8"))}
+    reused_paras = prepare_reused_embeddings(args, out)
+    search_pages = select_pages(args, out, reused_paras, excluded_questions)
 
     emb_path = os.path.join(out, "para_emb.npy")
     if os.path.exists(emb_path):
