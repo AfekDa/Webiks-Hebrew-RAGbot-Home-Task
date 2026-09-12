@@ -13,6 +13,15 @@ To keep the comparison airtight, this script also recomputes the BASELINE on the
 exact same questions and the exact same candidate lists -- so "before" and
 "after" differ only in the ORDER of the candidates, nothing else.
 
+The reranker's opinion is used in two ways, and BOTH are measured in one run:
+  replace : the reranker's order alone (the classic setup).
+  blend   : the reranker's order merged with the search order, so both
+            opinions count (see rank_fusion.py in the engine package). This is
+            what the live engine does by default, because on the full corpus
+            "replace" hurt while "blend" helped a little.
+--mode picks which one is the headline "after" number; the other is still
+recorded and printed as a third column.
+
 Two knobs keep it fast on a CPU (BGE is heavy):
   --top-rerank N : only re-read the top N candidates; the rest keep their old
                    order behind them (so the page set is identical to baseline).
@@ -23,7 +32,12 @@ Run eval_baseline.py first with the same --tag (it saves candidates.json).
 Usage:
     .venv/Scripts/python rag_eval/eval_reranker.py --tag main --n-questions 100 --top-rerank 20
 """
-import argparse, hashlib, json, os, time
+import argparse, hashlib, json, os, sys, time
+
+# The blend function lives in the engine package so the live system and this
+# evaluation share one implementation. Import it straight from the source tree.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Webiks-Hebrew-RAGbot"))
+from webiks_hebrew_ragbot.rank_fusion import fuse_orders
 
 # If the BGE model is already downloaded on this machine, load it straight from
 # disk and run offline (so a flaky network can't interfere). On a fresh machine
@@ -68,11 +82,15 @@ def main():
     ap.add_argument("--seq", type=int, default=512, help="most text to read per pair")
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--dtype", choices=["float32", "float16"], default="float32")
+    ap.add_argument("--mode", choices=["blend", "replace"], default="blend",
+                    help="headline 'after' number: blend with search order, or replace it")
+    ap.add_argument("--blend-k", type=int, default=5, dest="blend_k",
+                    help="blend strength; small = top of each list matters most")
     ap.add_argument("--threads", type=int, default=max(1, (os.cpu_count() or 2) // 2),
                     help="CPU threads (default = physical cores, avoids thrashing)")
     args = ap.parse_args()
-    if min(args.top_rerank, args.n_questions, args.seq, args.batch, args.threads) < 1:
-        ap.error("reranking limits, batch size and threads must be positive")
+    if min(args.top_rerank, args.n_questions, args.seq, args.batch, args.threads, args.blend_k) < 1:
+        ap.error("reranking limits, batch size, threads and blend-k must be positive")
     out = common.cache_dir(args.tag)
 
     paras = json.load(open(os.path.join(out, "paras.json"), encoding="utf-8"))
@@ -89,6 +107,7 @@ def main():
         "model": args.model, "top_rerank": args.top_rerank, "seq": args.seq, "dtype": args.dtype,
         "score_transform": "raw_logits",
         "tie_break": "doc_id_content",
+        "blend_k": args.blend_k,
         "n_questions": len(candidates),
         "data_sha256": hashlib.sha256(json.dumps(
             [paras, candidates], ensure_ascii=False, sort_keys=True
@@ -141,13 +160,17 @@ def main():
         if n == 0:
             return None, None
         def avg(side, idx): return sum(r[side][idx] for r in recs) / n
-        baseline = {"hit@1": avg("b", 0), "hit@3": avg("b", 1), "hit@5": avg("b", 2),
-                    "hit@10": avg("b", 3), "mrr@10": avg("b", 4)}
+        def summary(side):
+            return {"hit@1": avg(side, 0), "hit@3": avg(side, 1), "hit@5": avg(side, 2),
+                    "hit@10": avg(side, 3), "mrr@10": avg(side, 4)}
+        baseline = summary("b")
         result = {"tag": args.tag, "model": args.model, "n_questions": n,
                   "top_rerank": args.top_rerank, "n_paragraphs": len(paras),
-                  "hit@1": avg("r", 0), "hit@3": avg("r", 1), "hit@5": avg("r", 2),
-                  "hit@10": avg("r", 3), "mrr@10": avg("r", 4),
+                  "mode": args.mode, "blend_k": args.blend_k,
+                  **summary("r"),
                   "baseline_same_subset": baseline,
+                  "replace_mode": summary("replace"),
+                  "blend_mode": summary("blend"),
                   "runtime": runtime,
                   "mean_rerank_seconds": sum(r["rerank_seconds"] for r in recs) / n}
         json.dump(result, open(os.path.join(out, "reranker_results.json"), "w"), indent=2)
@@ -174,16 +197,25 @@ def main():
         scores = reranker.predict(pairs, batch_size=args.batch, show_progress_bar=False,
                                   activation_fct=torch.nn.Identity())
         rerank_seconds = time.perf_counter() - t_query
-        head_sorted = [head[j] for j in sorted(range(len(head)), key=lambda j: (
+        order = sorted(range(len(head)), key=lambda j: (
             -float(scores[j]), str(paras[head[j]]["doc_id"]), paras[head[j]]["content"],
-        ))]
-        r_pages = dedup_to_pages(head_sorted + tail, para_doc_ids)
-        r_hits, r_rr, _ = common.score_ranking(r_pages, accepted, ks)
+        ))
+        # "replace": the reranker's order alone. "blend": merged with the search
+        # order, exactly as the live engine does it (same fuse_orders function).
+        orders = {"replace": order,
+                  "blend": fuse_orders(list(range(len(head))), order, args.blend_k)}
+        pages, metrics = {}, {}
+        for name, o in orders.items():
+            pages[name] = dedup_to_pages([head[j] for j in o] + tail, para_doc_ids)
+            h, rr, _ = common.score_ranking(pages[name], accepted, ks)
+            metrics[name] = [int(h[1]), int(h[3]), int(h[5]), int(h[10]), rr]
 
         rec = {"qi": qi,
                "b": [int(b_hits[1]), int(b_hits[3]), int(b_hits[5]), int(b_hits[10]), b_rr],
-               "r": [int(r_hits[1]), int(r_hits[3]), int(r_hits[5]), int(r_hits[10]), r_rr],
-               "baseline_pages": b_pages, "reranked_pages": r_pages,
+               "r": metrics[args.mode],                 # the headline "after" (chosen --mode)
+               "replace": metrics["replace"], "blend": metrics["blend"],
+               "baseline_pages": b_pages, "reranked_pages": pages[args.mode],
+               "replace_pages": pages["replace"], "blend_pages": pages["blend"],
                "reranker_scores": [float(s) for s in scores],
                "rerank_seconds": rerank_seconds}
         done[qi] = rec
@@ -209,14 +241,16 @@ def main():
     def pct(x): return f"{x*100:5.1f}%"
     rows = [("correct page at #1", "hit@1"), ("correct page in top3", "hit@3"),
             ("correct page in top5", "hit@5"), ("correct page in top10", "hit@10")]
-    print(f"\n===== BEFORE vs AFTER  (same {n} questions, top-{args.top_rerank} reranked) =====")
+    replace, blend = result["replace_mode"], result["blend_mode"]
+    print(f"\n===== BEFORE vs AFTER  (same {n} questions, top-{args.top_rerank} reranked, "
+          f"headline mode = {args.mode}) =====")
     print(f"  minutes to run : {(time.perf_counter()-t0)/60:.0f}")
-    print(f"\n  {'metric':<22}{'before':>9}{'after':>9}{'change':>9}")
+    print(f"\n  {'metric':<22}{'before':>9}{'replace':>9}{'blend':>9}{'change':>9}   (change = {args.mode} - before)")
     for label, key in rows:
         b, a = baseline[key], result[key]
-        print(f"  {label:<22}{pct(b):>9}{pct(a):>9}{(a-b)*100:>+8.1f}")
+        print(f"  {label:<22}{pct(b):>9}{pct(replace[key]):>9}{pct(blend[key]):>9}{(a-b)*100:>+8.1f}")
     b, a = baseline["mrr@10"], result["mrr@10"]
-    print(f"  {'MRR@10':<22}{b:>9.3f}{a:>9.3f}{a-b:>+9.3f}")
+    print(f"  {'MRR@10':<22}{b:>9.3f}{replace['mrr@10']:>9.3f}{blend['mrr@10']:>9.3f}{a-b:>+9.3f}")
     print(f"\nsaved -> {out}/reranker_results.json")
 
 

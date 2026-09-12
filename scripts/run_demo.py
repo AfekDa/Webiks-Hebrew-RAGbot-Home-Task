@@ -21,7 +21,7 @@ def configure():
         "UPDATES_INDEX": "hebrew_rag_local_updates",
         "IS_MOCK_GPT_CLIENT": "true",
         "RERANK_ENABLED": "true", "RERANK_TOP": "50", "RERANK_MAX_SEQ": "512",
-        "RERANK_DTYPE": "float16",
+        "RERANK_DTYPE": "float16", "RERANK_MODE": "blend", "RERANK_BLEND_K": "5",
         "CODE_VERSION": "local-reranker", "LOG_LEVEL": "INFO",
     }
     for key, value in defaults.items():

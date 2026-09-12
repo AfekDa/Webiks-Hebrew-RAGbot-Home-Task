@@ -20,11 +20,16 @@ The individual Python scripts can also run on CPU, but take substantially longer
    page IDs in first-seen order. This mirrors the engine's Elasticsearch
    `script_score` query and page selection using NumPy. Small floating-point or
    tie-order differences remain possible between implementations.
-3. `eval_reranker.py --tag full --n-questions 200 --top-rerank 50 --dtype float16` reranks those
-   exact candidates with `BAAI/bge-reranker-v2-m3`, then applies the same page
-   deduplication. The reranker uses CUDA float16 and raw logits; the embedder
-   remains float32. Both models use a 512-token limit. Paragraph order is the only
-   retrieval change; no query rewriting, new candidates, or score blending.
+3. `eval_reranker.py --tag full --n-questions 200 --top-rerank 50 --dtype float16 --mode blend`
+   reranks those exact candidates with `BAAI/bge-reranker-v2-m3`, then applies the
+   same page deduplication. The reranker uses CUDA float16 and raw logits; the
+   embedder remains float32. Both models use a 512-token limit. Paragraph order is
+   the only retrieval change; no query rewriting or new candidates.
+   Two ways of using the reranker are measured in the same run and printed side
+   by side: `replace` (reranker order alone) and `blend` (reranker order merged
+   with the search order by reciprocal rank fusion, `--blend-k`, shared code in
+   `webiks_hebrew_ragbot/rank_fusion.py`). `--mode` picks which is the headline
+   "after" number and which order is saved as `reranked_pages`.
 4. `summarize_results.py --tag full` verifies that per-question metrics reproduce
    the saved summaries and exports results to `rag_eval/results/full/`. It also
    computes paired bootstrap intervals, top-1 wins/losses, candidate recall, and
@@ -49,7 +54,7 @@ Embedding chunks and reranker records are saved under `rag_eval/cache/<tag>/`.
 Re-run with the same parameters to resume. Use a fresh tag when changing the
 embedding selection or model settings. Reranker checkpoints reject changed
 candidate data, model path, precision, score transform, token limit, candidate
-count, or question count. Float16 inference can change close rankings; CPU and
+count, blend strength, or question count. Float16 inference can change close rankings; CPU and
 GPU results are not assumed to be numerically identical.
 
 Reviewable outputs include summaries, question IDs/accepted pages, per-question
