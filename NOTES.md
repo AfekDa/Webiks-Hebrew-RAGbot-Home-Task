@@ -81,6 +81,54 @@ no re-indexing. Full numbers and limitations: `SUBMISSION.md` section 4 and 6.
 
 ---
 
+## How page scoring works, in the simplest terms
+
+First, one word: **"embed"** means *run a piece of text through the Hebrew model
+and get back a list of numbers that captures its meaning*. Two texts about the
+same thing get similar number-lists. To compare a question and a paragraph, you
+compare their number-lists (closer = more relevant). That is the only trick in
+the whole system.
+
+**Embedding happens in three places. Only the third is new.**
+
+1. **Every paragraph — embedded once, at setup.** When the corpus is loaded into
+   Elasticsearch, each paragraph is turned into its number-list and stored. This
+   never runs again. (We did NOT change this, and we do NOT chunk anything — the
+   corpus already comes cut into paragraphs.)
+2. **The question — embedded fresh on every query.** In `engine.py`
+   (`self.retrieval_model.encode(query)`). Elasticsearch compares that to all the
+   stored paragraph number-lists and hands back the 50 closest paragraphs.
+3. **The page titles — embedded fresh on every query. THIS is what page scoring
+   adds.** In `page_scoring.py` (the `self.model.encode([...titles...])` line).
+   A title is short (e.g. "קצבת ילדים" = child allowance), so it is embedded
+   whole, in one piece — no chunking. Only the ~50 candidate pages' titles are
+   embedded, so it costs milliseconds.
+
+**The flow, end to end:**
+
+```
+question
+  → embed the question                              (engine.py)
+  → Elasticsearch returns the 50 closest paragraphs (uses paragraphs embedded once at setup)
+  → PAGE SCORING (page_scoring.py):
+       group those 50 paragraphs by their page
+       embed each candidate page's title            ← the one new embed
+       compare each title to the question            → "title match" number
+       score each page =
+            best paragraph
+          + 0.25 × second-best paragraph
+          + 0.25 × title match
+       reorder the pages by that score               (rule lives in page_order.py)
+  → keep the top few pages → answer step
+```
+
+**Why the title helps:** a Kol-Zchut paragraph is a fragment ("the payment is X",
+"apply at office Y") that often does not name the topic. The page *title* does.
+So the title match is extra evidence the paragraph text alone cannot give — and
+it is exactly the signal the reranker was blind to (it only read paragraph text).
+
+---
+
 ## File map — what each file we added is for
 
 Plain one-liners so a reviewer (or future me) knows why each file exists.
