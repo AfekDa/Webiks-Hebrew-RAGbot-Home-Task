@@ -15,7 +15,7 @@ The slow "studying" is saved in CHUNKS as it goes, so if the run is stopped it
 resumes where it left off instead of starting over. Re-running with a tag that
 is already finished does nothing.
 
-Usage (from the project root, C:\\Users\\GIGABYTE\\Documents\\webiks):
+Usage (from the project root):
     .venv/Scripts/python rag_eval/build_subset.py --questions 200 --pages 2000 --tag main
 
 Quick tiny run to check it works (~3 min):

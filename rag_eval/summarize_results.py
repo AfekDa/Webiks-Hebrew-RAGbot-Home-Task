@@ -12,10 +12,12 @@ from scipy.stats import binomtest
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tag", default="full")
+    parser.add_argument("--tag", default="full", help="cache folder to read (rag_eval/cache/<tag>)")
+    parser.add_argument("--name", default=None,
+                        help="results folder to write (rag_eval/results/<name>); defaults to the tag")
     args = parser.parse_args()
     cache = Path("rag_eval/cache") / args.tag
-    output = Path("rag_eval/results") / args.tag
+    output = Path("rag_eval/results") / (args.name or args.tag)
     result = json.loads((cache / "reranker_results.json").read_text())
     candidates = json.loads((cache / "candidates.json").read_text(encoding="utf-8"))
     records = [json.loads(line) for line in (cache / "rerank_progress.jsonl").read_text().splitlines() if line]

@@ -19,4 +19,6 @@ powershell -ExecutionPolicy Bypass -File scripts/run_eval.ps1
 ```
 
 Large assets and intermediate embeddings are ignored by Git. Verified evaluation
-results are exported to `rag_eval/results/full/` for review.
+results are exported for review under `rag_eval/results/`: `blend/` is the
+headline run (reranker merged with the search order, the engine default) and
+`replace/` is the reranker-only run it is compared against.

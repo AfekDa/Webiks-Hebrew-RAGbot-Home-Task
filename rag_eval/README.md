@@ -30,8 +30,9 @@ The individual Python scripts can also run on CPU, but take substantially longer
    with the search order by reciprocal rank fusion, `--blend-k`, shared code in
    `webiks_hebrew_ragbot/rank_fusion.py`). `--mode` picks which is the headline
    "after" number and which order is saved as `reranked_pages`.
-4. `summarize_results.py --tag full` verifies that per-question metrics reproduce
-   the saved summaries and exports results to `rag_eval/results/full/`. It also
+4. `summarize_results.py --tag full --name blend` verifies that per-question metrics reproduce
+   the saved summaries and exports results to `rag_eval/results/<name>/`
+   (`blend/` and `replace/` are the two committed runs). It also
    computes paired bootstrap intervals, top-1 wins/losses, candidate recall, and
    measured reranking latency.
 
@@ -64,7 +65,7 @@ The full corpus, model files, embeddings, and temporary cache stay out of Git.
 After indexing and launching the Demo as described in `LOCAL_DEMO.md`, run:
 
 ```powershell
-.venv/Scripts/python scripts/verify_demo.py --tag full
+.venv/Scripts/python scripts/verify_demo.py --tag full --name blend
 ```
 
 This queries the real HTTP API and compares returned page IDs to offline results,
