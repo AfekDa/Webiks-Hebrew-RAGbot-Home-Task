@@ -18,6 +18,36 @@ live engine share exactly the same code.
 """
 
 
+def reciprocal_rank_fusion(ranked_lists: list, k: int = 60, weights: list = None) -> list:
+    """Combine several ranked lists (each best-first) into one ranked list.
+
+    Unlike `fuse_orders`, the lists may hold DIFFERENT items: this is what we
+    need to blend two *retrievers* (dense meaning search and BM25 keyword search)
+    whose top results only partly overlap. Each item scores
+
+        sum over the lists it appears in of  weight / (k + its position)
+
+    positions starting at 1, so a page that both retrievers rank highly rises to
+    the top, and a page only one of them finds can still surface. Items are
+    returned best-first; ties break by first appearance across the lists, so the
+    result is deterministic.
+    """
+    if k < 1:
+        raise ValueError("k must be positive")
+    if weights is None:
+        weights = [1.0] * len(ranked_lists)
+    if len(weights) != len(ranked_lists):
+        raise ValueError("weights must match the number of lists")
+    points, first_seen, seq = {}, {}, 0
+    for weight, lst in zip(weights, ranked_lists):
+        for pos, item in enumerate(lst, start=1):
+            points[item] = points.get(item, 0.0) + weight / (k + pos)
+            if item not in first_seen:
+                first_seen[item] = seq
+                seq += 1
+    return sorted(points, key=lambda item: (-points[item], first_seen[item]))
+
+
 def fuse_orders(order_a: list, order_b: list, k: int = 5) -> list:
     """Return `order_a`'s items in blended order.
 
