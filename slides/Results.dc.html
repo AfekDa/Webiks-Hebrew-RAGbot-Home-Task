@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", "IBM Plex Sans Hebrew", "Segoe UI", system-ui, sans-serif; color: #1c1b18; }
+    a { color: #0e7c6b; } a:hover { color: #0a5e51; }
+    .mono { font-family: "IBM Plex Mono", "Consolas", monospace; }
+  </style>
+</helmet>
+<div style="width: 1280px; height: 720px; box-sizing: border-box; background: #f6f4ef; padding: 56px 72px; display: flex; flex-direction: column; gap: 24px; position: relative;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline;">
+    <div style="font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #6b675f; font-weight: 600;">3 / 3 — Results</div>
+    <div style="font-size: 13px; color: #6b675f;">Full corpus · 500 fresh questions · 250 to choose, 250 held out</div>
+  </div>
+
+  <h1 style="margin: 0; font-size: 48px; line-height: 1.08; font-weight: 700; letter-spacing: -0.01em; max-width: 1100px;">First result: <span class="mono" style="color: #6b675f;">38.8%</span> → <span class="mono" style="color: #0e7c6b;">54.8%</span> on questions the weights never saw.</h1>
+
+  <div style="display: grid; grid-template-columns: 7fr 5fr; gap: 36px; flex-grow: 1;">
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: flex; flex-direction: column; border: 1px solid #e3ded4; border-radius: 8px; overflow: hidden; background: #ffffff;">
+        <div style="display: grid; grid-template-columns: 1fr 120px 120px 110px; padding: 10px 18px; background: #efece5; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b675f; font-weight: 600;">
+          <div>Correct page is…</div><div style="text-align: right;">Before</div><div style="text-align: right;">After</div><div style="text-align: right;">Change</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 120px 120px 110px; padding: 13px 18px; border-top: 1px solid #ece8df; align-items: center; background: #eaf5f2;">
+          <div style="font-size: 17px; font-weight: 600;">at #1</div>
+          <div class="mono" style="text-align: right; font-size: 18px;">38.8%</div>
+          <div class="mono" style="text-align: right; font-size: 18px; font-weight: 600;">54.8%</div>
+          <div class="mono" style="text-align: right; font-size: 18px; font-weight: 600; color: #0e7c6b;">+16.0</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 120px 120px 110px; padding: 13px 18px; border-top: 1px solid #ece8df; align-items: center;">
+          <div style="font-size: 17px;">in top 3</div>
+          <div class="mono" style="text-align: right; font-size: 18px;">65.6%</div>
+          <div class="mono" style="text-align: right; font-size: 18px;">71.6%</div>
+          <div class="mono" style="text-align: right; font-size: 18px; color: #0e7c6b;">+6.0</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 120px 120px 110px; padding: 13px 18px; border-top: 1px solid #ece8df; align-items: center;">
+          <div style="font-size: 17px;">in top 5</div>
+          <div class="mono" style="text-align: right; font-size: 18px;">77.2%</div>
+          <div class="mono" style="text-align: right; font-size: 18px;">78.4%</div>
+          <div class="mono" style="text-align: right; font-size: 18px; color: #0e7c6b;">+1.2</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 120px 120px 110px; padding: 13px 18px; border-top: 1px solid #ece8df; align-items: center;">
+          <div style="font-size: 17px;">in top 10</div>
+          <div class="mono" style="text-align: right; font-size: 18px;">86.8%</div>
+          <div class="mono" style="text-align: right; font-size: 18px;">87.6%</div>
+          <div class="mono" style="text-align: right; font-size: 18px; color: #0e7c6b;">+0.8</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 120px 120px 110px; padding: 13px 18px; border-top: 1px solid #ece8df; align-items: center;">
+          <div style="font-size: 17px;">MRR@10 <span style="font-size: 13px; color: #6b675f;">(how high up, on average)</span></div>
+          <div class="mono" style="text-align: right; font-size: 18px;">0.547</div>
+          <div class="mono" style="text-align: right; font-size: 18px; font-weight: 600;">0.650</div>
+          <div class="mono" style="text-align: right; font-size: 18px; font-weight: 600; color: #0e7c6b;">+0.10</div>
+        </div>
+      </div>
+      <div style="font-size: 14px; line-height: 1.5; color: #3a3833;">
+        <strong>Metrics:</strong> hit@k because #1 is what the user and the answer step actually see; MRR because it rewards moving the right page <em>upward</em>. Same questions, same 50 candidates before and after; only the order changes.
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div style="padding: 18px 20px; background: #ffffff; border: 1px solid #e3ded4; border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b675f; font-weight: 600;">How it was kept honest</div>
+        <div style="font-size: 15px; line-height: 1.5; color: #3a3833;">Weights chosen on <strong>250</strong> questions, reported <strong>once</strong> on 250 held-out ones. Ship rule for every idea: held-out #1 or MRR up, top-5 not down. Two of three failed it.</div>
+      </div>
+
+      <div style="padding: 18px 20px; background: #ffffff; border: 1px solid #e3ded4; border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b675f; font-weight: 600;">In the backend</div>
+        <div style="font-size: 15px; line-height: 1.5; color: #3a3833;">An optional step in the engine's search, turned on in the local demo; off restores the original exactly. No API key needed. 28 unit tests, plus a check that the live API returns the offline ranking.</div>
+      </div>
+
+      <div style="padding: 18px 20px; background: #efece5; border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b675f; font-weight: 600;">Honest limits</div>
+        <div style="font-size: 15px; line-height: 1.5; color: #3a3833;">The QA file also trained the retriever, so absolute numbers are optimistic; the split guards against tuning, not familiarity. The title weight relies on good titles.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 72px; right: 72px; bottom: 28px; display: flex; justify-content: space-between; font-size: 12px; color: #6b675f;">
+    <div>Full write-up, code and per-question results: SUBMISSION.md · rag_eval/results/page_scoring_500</div>
+    <div>Afek David</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
