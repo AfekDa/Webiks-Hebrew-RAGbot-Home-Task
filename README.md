@@ -20,8 +20,8 @@ top-5 unchanged.
 During development I also built and evaluated two other ideas the same way, and
 rejected both because they lowered the first result on held-out questions: a
 cross-encoder reranker (BGE) and hybrid dense + BM25 retrieval. Their code was
-removed to keep the repo focused on the shipped answer; their measured numbers
-stay in `rag_eval/results/` and the reasoning is in `SUBMISSION.md`.
+removed to keep the repo focused on the shipped answer; the numbers and the
+reasoning are in `SUBMISSION.md`.
 
 Run the full evaluation from the repository root (GPU):
 

@@ -177,11 +177,11 @@ Everything not listed here is the original upstream Webiks code, unchanged.
 - `webiks_hebrew_ragbot/engine.py` / `config.py` — **edited** to call page scoring as an optional step (off by default) with validated settings.
 - `tests/test_page_scoring.py` — unit tests for the rule and the engine wiring.
 
-**The two ideas I tried and rejected** — code removed, numbers kept
+**The two ideas I tried and rejected** — removed from the repo
 - A cross-encoder (BGE) reranker and a dense+BM25 hybrid were built, integrated
-  and evaluated, then **removed from the codebase** to keep the repo focused on
-  the shipped answer. Their measured numbers stay in `rag_eval/results/replace/`
-  and `.../blend/`, and the reasoning is in `SUBMISSION.md` section 4.
+  and evaluated, then **removed** (code and result files) to keep the repo
+  focused on the shipped answer. Their numbers and the reasoning are recorded in
+  `SUBMISSION.md` section 4 and the top of this file.
 
 **The evaluation harness** — proves the before/after honestly (`rag_eval/`)
 - `common.py` — shared logic; reproduces the real engine's search offline in plain maths.
@@ -190,7 +190,6 @@ Everything not listed here is the original upstream Webiks code, unchanged.
 - `eval_page_scoring.py` — the shipped improvement's before/after, dev/held-out split.
 - `README.md` — walkthrough of the harness.
 - `results/page_scoring_500/`, `results/page_scoring_200/` — the shipped result (headline + earlier pilot).
-- `results/replace/`, `results/blend/` — the reranker's committed numbers.
 
 **Running it**
 - `scripts/run_eval.ps1` — one command: baseline + the 500-question page-scoring run.
@@ -483,7 +482,7 @@ Why it matters:
 - Which exact reranker to use. — **BAAI/bge-reranker-v2-m3** (multilingual, handles Hebrew). Built and **rejected**; not what we ship.
 - How big a page set to use for measuring. — started with 2,000 pages on CPU; **final: the full corpus** on a GPU PC.
 - Docker for the final live demo, or an easier alternative. — **standalone Elasticsearch 8.12.2** under `.runtime/` (see `LOCAL_DEMO.md`); Docker also works.
-- What to ship. — **page scoring** (see top). The BGE reranker and hybrid were evaluated and rejected, and their code was **removed** from the repo; their numbers stay in `rag_eval/results/` as evidence.
+- What to ship. — **page scoring** (see top). The BGE reranker and hybrid were evaluated and rejected, and both their code and result files were **removed** from the repo; their numbers and reasoning are recorded in `SUBMISSION.md`.
 
 ---
 

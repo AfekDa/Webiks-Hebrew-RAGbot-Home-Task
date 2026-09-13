@@ -44,9 +44,9 @@ but the split does stop us from fooling ourselves with a hand-picked setting.
    The rule (`webiks_hebrew_ragbot/page_order.py`) is the exact code the engine runs.
 
 Two other ideas were evaluated during development and rejected (a cross-encoder
-reranker and a dense + BM25 hybrid). Their evaluation code was removed to keep
-this folder focused on the shipped answer; their measured numbers are kept in
-`rag_eval/results/` (see below) and the reasoning is in `SUBMISSION.md`.
+reranker and a dense + BM25 hybrid). Their evaluation code and result files were
+removed so this folder carries only the shipped answer; their numbers and the
+reasoning are in `SUBMISSION.md` section 4.
 
 ## Committed results (`rag_eval/results/`)
 
@@ -54,7 +54,6 @@ this folder focused on the shipped answer; their measured numbers are kept in
 |---|---|
 | `page_scoring_500/` | **the submitted improvement**: 500 fresh questions, 250 dev / 250 held-out |
 | `page_scoring_200/` | earlier pilot of the same idea on the first 200 questions (100/100) |
-| `replace/`, `blend/` | the rejected cross-encoder reranker, two ways of using it |
 
 ## Resume and outputs
 

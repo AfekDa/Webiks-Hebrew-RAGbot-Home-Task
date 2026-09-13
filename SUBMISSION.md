@@ -112,9 +112,9 @@ earlier 200-question pilot on the same corpus pointed the same way (held-out
 | **Cross-encoder reranker** (BAAI/bge-reranker-v2-m3) | re-reads question+paragraph together, re-sorts; tried both replacing and blending with the search order | 45% → 40% (blend), 44% → 41% (replace) | a general model overruling a retriever trained on these questions; fixes some #1s, breaks more |
 | **Hybrid dense + BM25** (reciprocal rank fusion) | adds exact-keyword search | 45% → 36% | BM25 alone is weak here (13% at #1); even dense-weighted fusion drags poor keyword matches near the top |
 
-Both improved recall around ranks 4–5 and damaged the first result. Their code
-was removed to keep the repo focused on the shipped answer; their measured
-numbers stay committed in `rag_eval/results/` (`replace/`, `blend/`).
+Both improved recall around ranks 4–5 and damaged the first result. They were
+built and evaluated during development, then removed so the repo carries only
+the shipped answer; the measured numbers above are the result of that work.
 
 **Why a strong reranker lost, in plain words.** A reranker is usually the safest
 retrieval upgrade, so this deserves an explanation:
