@@ -84,6 +84,13 @@ generation used the intended mock and no paid model call occurred.
 
 The saved proof is `rag_eval/results/page_scoring_500/demo_verification.json`.
 
+**The three terminals:** Terminal 1 ran the evaluation, checks, and
+`verify_demo.py`. Terminal 2 ran Elasticsearch, which stored the 24,487
+paragraph vectors and returned the top 50 matching paragraphs. Terminal 3 ran
+the Demo backend, which queried Elasticsearch, applied page scoring, and served
+the API at `http://127.0.0.1:5000`. The verifier in Terminal 1 called that API
+in Terminal 3, which in turn searched Elasticsearch in Terminal 2.
+
 ---
 
 ## How page scoring works, in the simplest terms
