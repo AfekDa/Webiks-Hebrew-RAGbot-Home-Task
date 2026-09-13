@@ -143,9 +143,9 @@ carries only the shipped answer.
 
 ## 6. Run the updated backend locally
 
-No OpenAI key needed. Full details, including a no-Docker Elasticsearch option,
-are in `LOCAL_DEMO.md`. The short version, from the project root after setup
-(`UPSTREAM.md`):
+No OpenAI key needed. Prerequisites: a Python 3.11 environment with the Demo's
+`requirements.txt` installed, and the corpus, QA data, and embedder model
+downloaded to the project root (links in the repo). Then, from the project root:
 
 ```
 # 1. Start Elasticsearch (Docker)
@@ -165,7 +165,7 @@ For a before/after on the same endpoint, set `$env:PAGE_SCORING_ENABLED='false'`
 
 ## 7. Reproduce the evaluation
 
-From the project root, with the data + model in place (see `UPSTREAM.md`):
+From the project root, with the same prerequisites as section 6:
 
 ```
 # one command: embed the corpus, baseline, then the 500-question page-scoring run
@@ -178,5 +178,3 @@ powershell -ExecutionPolicy Bypass -File scripts\run_eval.ps1
 .venv\Scripts\python rag_eval\eval_baseline.py --tag full500
 .venv\Scripts\python rag_eval\eval_page_scoring.py --tag full500 --dev 250 --name page_scoring_500
 ```
-
-Evaluation walkthrough: `rag_eval/README.md`.
