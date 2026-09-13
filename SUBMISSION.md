@@ -47,7 +47,7 @@ The new page score is
 
 ```
 score = best paragraph
-      + 0.25 × second-best paragraph      (the right page usually has several matches;
+      + 0.25 × second-best paragraph      (the right page usually has several matches,
                                            a look-alike has one)
       + 0.25 × title match                (Kol-Zchut titles name the topic:
                                            "child allowance", "mourning days")
@@ -62,7 +62,7 @@ title signal was seen to misfire.
 
 Why this works where a stronger-looking reranker failed (section 4): the shipped
 retriever was **trained on this very QA data** and is unusually strong. Anything
-that tries to *overrule* it loses. Page scoring does not overrule it; it listens
+that tries to *overrule* it loses. Page scoring does not overrule it. It listens
 to it more carefully.
 
 **Cost:** no new model, no new dependency, no re-indexing, one extra small
@@ -76,7 +76,7 @@ behaviour exactly.
 A small harness (`rag_eval/`) reproduces the engine's retrieval offline in
 NumPy - same model, same "top-50 → collapse to pages" logic - so it runs without
 Elasticsearch. **Metrics:** *hit@k* (is a correct page in the top k, for k = 1,
-3, 5, 10) because #1 is what the user and the answer step actually see; *MRR@10*
+3, 5, 10) because #1 is what the user and the answer step actually see. *MRR@10*
 because it rewards moving the correct page *upward*, which is the whole job.
 
 **Discipline, applied to every idea:** choose any setting on the first half of
@@ -110,22 +110,22 @@ earlier 200-question pilot on the same corpus pointed the same way (held-out
 
 | Alternative | What it does | Held-out #1 | Why it loses |
 |---|---|---|---|
-| **Cross-encoder reranker** (BAAI/bge-reranker-v2-m3) | re-reads question+paragraph together, re-sorts; tried both replacing and blending with the search order | 45% → 40% (blend), 44% → 41% (replace) | a general model overruling a retriever trained on these questions; fixes some #1s, breaks more |
+| **Cross-encoder reranker** (BAAI/bge-reranker-v2-m3) | re-reads question+paragraph together, re-sorts, tried both replacing and blending with the search order | 45% → 40% (blend), 44% → 41% (replace) | a general model overruling a retriever trained on these questions - fixes some #1s, breaks more |
 
 It improved recall around ranks 4–5 and damaged the first result. It was built
 and evaluated during development, then removed so the repo carries only the
-shipped answer; the measured numbers above are the result of that work.
+shipped answer. The measured numbers above are the result of that work.
 
 **Why a strong reranker lost, in plain words.** A reranker is usually the safest
 retrieval upgrade, so this deserves an explanation:
 
 - *The retriever has seen the exam.* The shipped embedder was fine-tuned on this
-  QA file. On these questions it is an expert; a general reranker that has never
+  QA file. On these questions it is an expert. A general reranker that has never
   seen Kol-Zchut was asked to overrule it and lost more often than it won
   (fixed 24 first results out of 200, broke 30).
 - *The reranker reads the paragraph alone, but the topic lives in the title.*
   Kol-Zchut paragraphs are fragments ("the payment is X", "apply at office Y")
-  that often don't name the benefit; the page title does. Two similar fragments
+  that often don't name the benefit. The page title does. Two similar fragments
   from different pages look alike to the reranker. That observation is what led
   to adding the title match in page scoring.
 - *Deep reranking lets look-alikes jump from far below.* Restricting the reranker
@@ -139,7 +139,7 @@ retrieval upgrade, so this deserves an explanation:
 
 - Page scoring is an **optional step inside the engine's search**
   (`webiks_hebrew_ragbot/page_scoring.py`), applied to the Elasticsearch hits
-  before pages are picked. Off by default (`PAGE_SCORING_ENABLED`); the local
+  before pages are picked. Off by default (`PAGE_SCORING_ENABLED`). The local
   launcher turns it on with the evaluated weights. Settings are validated at
   startup.
 - The scoring rule is one dependency-free function (`page_order.py`) shared by
@@ -160,11 +160,11 @@ retrieval upgrade, so this deserves an explanation:
   question set in the assignment data, so none of these numbers are an
   out-of-domain estimate. The dev/held-out split guards against tuning on the
   test set, not against the model having seen the questions. On genuinely new
-  user questions the *absolute* numbers will be lower; I expect the *direction*
+  user questions the *absolute* numbers will be lower. I expect the *direction*
   to hold, since titles and multi-paragraph evidence are properties of the pages.
 - **Weights chosen from a small grid.** Three values each for two weights and
   the gate on/off, picked on 250 questions. Held-out confirmation on 250 more is
-  the safeguard; a larger grid would need more questions.
+  the safeguard. A larger grid would need more questions.
 - **Title match depends on good titles.** Kol-Zchut titles are consistently
   topical. On a corpus with vague titles the title weight should be re-tuned or
   set to zero (one setting).
