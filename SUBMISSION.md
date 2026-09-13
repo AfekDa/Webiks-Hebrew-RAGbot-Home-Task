@@ -154,7 +154,30 @@ retrieval upgrade, so this deserves an explanation:
 
 ---
 
-## 6. How to reproduce
+## 6. Run the updated backend locally
+
+No OpenAI key needed. Full details, including a no-Docker Elasticsearch option,
+are in `LOCAL_DEMO.md`. The short version, from the project root after setup
+(`UPSTREAM.md`):
+
+```
+# 1. Start Elasticsearch (Docker)
+docker run --name hebrew-rag-es -e "discovery.type=single-node" -e "xpack.security.enabled=false" ^
+  -e "ES_JAVA_OPTS=-Xms2g -Xmx2g" -p 127.0.0.1:9200:9200 elasticsearch:8.12.2
+
+# 2. Index the corpus into Elasticsearch (reuses the evaluation's paragraph vectors)
+.venv\Scripts\python rag_eval\build_subset.py --questions 200 --pages 25000 --tag full
+.venv\Scripts\python scripts\seed_demo.py --tag full
+
+# 3. Launch the backend: page scoring ON, mock answer step, no API key
+.venv\Scripts\python scripts\run_demo.py
+```
+
+Then open http://127.0.0.1:5000/docs, or POST to `/search` with
+`{"query": "<your Hebrew question>", "asked_from": "local-demo"}` (`/health` returns 200).
+For a before/after on the same endpoint, set `PAGE_SCORING_ENABLED=false` and relaunch.
+
+## 7. Reproduce the evaluation
 
 From the project root, with the data + model in place (see `UPSTREAM.md`):
 
@@ -170,4 +193,4 @@ powershell -ExecutionPolicy Bypass -File scripts\run_eval.ps1
 .venv\Scripts\python rag_eval\eval_page_scoring.py --tag full500 --dev 250 --name page_scoring_500
 ```
 
-Run the backend locally: `LOCAL_DEMO.md`. Evaluation walkthrough: `rag_eval/README.md`.
+Evaluation walkthrough: `rag_eval/README.md`.
