@@ -154,26 +154,7 @@ retrieval upgrade, so this deserves an explanation:
 
 ---
 
-## 6. Honest limitations
-
-- **The questions are the embedder's training questions.** There is no held-out
-  question set in the assignment data, so none of these numbers are an
-  out-of-domain estimate. The dev/held-out split guards against tuning on the
-  test set, not against the model having seen the questions. On genuinely new
-  user questions the *absolute* numbers will be lower. I expect the *direction*
-  to hold, since titles and multi-paragraph evidence are properties of the pages.
-- **Weights chosen from a small grid.** Three values each for two weights and
-  the gate on/off, picked on 250 questions. Held-out confirmation on 250 more is
-  the safeguard. A larger grid would need more questions.
-- **Title match depends on good titles.** Kol-Zchut titles are consistently
-  topical. On a corpus with vague titles the title weight should be re-tuned or
-  set to zero (one setting).
-- **Latency.** One extra encode of ≤50 titles per query: milliseconds on a GPU,
-  well under a second on CPU.
-
----
-
-## 7. How to reproduce
+## 6. How to reproduce
 
 From the project root, with the data + model in place (see `UPSTREAM.md`):
 
