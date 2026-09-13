@@ -465,7 +465,7 @@ Why it matters:
 
 ## Submission repo (set up)
 
-- **Private repo:** https://github.com/AfekDa/Webiks-Hebrew-RAGbot-Home-Task
+- **Public repo:** https://github.com/AfekDa/ragbot
 - One repo holding both projects as subfolders: `Webiks-Hebrew-RAGbot-Demo/` (backend) and `Webiks-Hebrew-RAGbot/` (search engine), plus `rag_eval/` and the notes.
 - **Commit strategy for easy review:** commit #1 is the pristine upstream code (see `UPSTREAM.md` for exact sources/commits); every later commit's diff shows exactly what we changed for the task.
 - Big files (corpus, QA csv, model, `.venv`, eval cache) are **not** in git - see `.gitignore` + `UPSTREAM.md` for where to download them.
