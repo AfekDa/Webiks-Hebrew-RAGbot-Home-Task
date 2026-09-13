@@ -68,7 +68,21 @@ no re-indexing. Full numbers and limitations: `SUBMISSION.md` section 4 and 6.
 - [x] Page scoring: built, integrated (optional, on in the local demo), measured on 500 fresh questions — **shipped**
 - [x] `SUBMISSION.md` written around the shipped result
 - [x] 2–3 slides for the interview (in `slides/`; export a PDF from the canvas to present)
-- [ ] Run `scripts/verify_demo.py` once on the GPU PC against the live API and commit its output
+- [x] Run `scripts/verify_demo.py` on the GPU PC against the live API and commit its output
+
+### Live demo proof (what we did)
+
+The offline evaluation says which pages page scoring should return for each
+held-out question. We then started the real local system: Elasticsearch with
+all 24,487 paragraphs, followed by the Demo backend with page scoring enabled.
+
+`scripts/verify_demo.py` sent five held-out questions to that running API. Four
+of them were questions where page scoring changed the top three pages. For all
+five, the page IDs returned by the API exactly matched the offline improved
+ranking. The API also reported `llm_tokens: 0`, confirming that answer
+generation used the intended mock and no paid model call occurred.
+
+The saved proof is `rag_eval/results/page_scoring_500/demo_verification.json`.
 
 ---
 
