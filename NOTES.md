@@ -1,4 +1,4 @@
-# Working Notes — Hebrew RAG Home Task
+# Working Notes - Hebrew RAG Home Task
 
 > Working diary, in plain language. The final, graded write-up is
 > `SUBMISSION.md`; how to run things is in `LOCAL_DEMO.md` and `rag_eval/README.md`.
@@ -64,8 +64,8 @@ no re-indexing. Full numbers and limitations: `SUBMISSION.md` section 4 and 6.
 
 - [x] Understand the system, get data + model, clean environment, measurement harness
 - [x] Baseline on the full corpus (24,487 paragraphs)
-- [x] Reranker: built, measured — **rejected**, then **removed** from the repo (numbers in `SUBMISSION.md`)
-- [x] Page scoring: built, integrated (optional, on in the local demo), measured on 500 fresh questions — **shipped**
+- [x] Reranker: built, measured - **rejected**, then **removed** from the repo (numbers in `SUBMISSION.md`)
+- [x] Page scoring: built, integrated (optional, on in the local demo), measured on 500 fresh questions - **shipped**
 - [x] `SUBMISSION.md` written around the shipped result
 - [x] 2–3 slides for the interview (in `slides/`; export a PDF from the canvas to present)
 - [x] Run `scripts/verify_demo.py` on the GPU PC against the live API and commit its output
@@ -103,17 +103,17 @@ the whole system.
 
 **Embedding happens in three places. Only the third is new.**
 
-1. **Every paragraph — embedded once, at setup.** When the corpus is loaded into
+1. **Every paragraph - embedded once, at setup.** When the corpus is loaded into
    Elasticsearch, each paragraph is turned into its number-list and stored. This
-   never runs again. (We did NOT change this, and we do NOT chunk anything — the
+   never runs again. (We did NOT change this, and we do NOT chunk anything - the
    corpus already comes cut into paragraphs.)
-2. **The question — embedded fresh on every query.** In `engine.py`
+2. **The question - embedded fresh on every query.** In `engine.py`
    (`self.retrieval_model.encode(query)`). Elasticsearch compares that to all the
    stored paragraph number-lists and hands back the 50 closest paragraphs.
-3. **The page titles — embedded fresh on every query. THIS is what page scoring
+3. **The page titles - embedded fresh on every query. THIS is what page scoring
    adds.** In `page_scoring.py` (the `self.model.encode([...titles...])` line).
    A title is short (e.g. "קצבת ילדים" = child allowance), so it is embedded
-   whole, in one piece — no chunking. Only the ~50 candidate pages' titles are
+   whole, in one piece - no chunking. Only the ~50 candidate pages' titles are
    embedded, so it costs milliseconds.
 
 **The flow, end to end:**
@@ -136,7 +136,7 @@ question
 
 **Why the title helps:** a Kol-Zchut paragraph is a fragment ("the payment is X",
 "apply at office Y") that often does not name the topic. The page *title* does.
-So the title match is extra evidence the paragraph text alone cannot give — and
+So the title match is extra evidence the paragraph text alone cannot give - and
 it is exactly the signal the reranker was blind to (it only read paragraph text).
 
 ### The hardest interview question: "if the model was trained on these questions, how did changing the ranking help?"
@@ -150,15 +150,15 @@ is already optimal."** It means one narrow thing, and the win lives in the gap.
    "rank each page by its single best paragraph" is a plain heuristic bolted on
    afterward that the training never touched.
 2. **Trained is not perfect.** The model generalized, it did not memorize a lookup
-   table — which is exactly why even on these questions the baseline is 39% at #1,
+   table - which is exactly why even on these questions the baseline is 39% at #1,
    not 100%. There is real spread to exploit.
 3. **The baseline throws signal away.** The model scores all 50 paragraphs, then
    the baseline keeps one number per page (its best paragraph) and ignores the
-   rest — the page's other matching paragraphs, and the title (the search only
+   rest - the page's other matching paragraphs, and the title (the search only
    ever embeds paragraph text, never the title).
 4. **Page scoring uses more of the SAME model's output.** Second-best paragraph:
    same model. Title match: same model, pointed at a field it was never asked
-   about. No new knowledge, no expert beaten — we just stop ignoring signal the
+   about. No new knowledge, no expert beaten - we just stop ignoring signal the
    model already produced.
 
 So: the model being trained on these questions is why a **reranker** (a rival
@@ -171,47 +171,47 @@ judgment and lost; page scoring *reads more of the expert's own notes* and won.
 
 ---
 
-## File map — what each file we added is for
+## File map - what each file we added is for
 
 Plain one-liners so a reviewer (or future me) knows why each file exists.
 Everything not listed here is the original upstream Webiks code, unchanged.
 
 **The write-up and this diary**
-- `SUBMISSION.md` — the graded 1–2 page write-up: the improvement, why, results, limits.
-- `NOTES.md` — this working diary (the reasoning trail; not the graded doc).
-- `README.md` — repo front page: what shipped, the one headline number, where to look.
-- `LOCAL_DEMO.md` — how to run the upgraded backend locally (Elasticsearch, seed, launch).
-- `UPSTREAM.md` — where the big files (corpus, model, QA) come from; how to set up the env.
+- `SUBMISSION.md` - the graded 1–2 page write-up: the improvement, why, results, limits.
+- `NOTES.md` - this working diary (the reasoning trail; not the graded doc).
+- `README.md` - repo front page: what shipped, the one headline number, where to look.
+- `LOCAL_DEMO.md` - how to run the upgraded backend locally (Elasticsearch, seed, launch).
+- `UPSTREAM.md` - where the big files (corpus, model, QA) come from; how to set up the env.
 
-**The shipped improvement (page scoring)** — in the search engine
-- `webiks_hebrew_ragbot/page_order.py` — the scoring rule itself (one small, dependency-free function). Shared by the engine and the evaluation so both behave identically.
-- `webiks_hebrew_ragbot/page_scoring.py` — wraps that rule for the live engine: groups the search hits by page, embeds the titles, reorders.
-- `webiks_hebrew_ragbot/engine.py` / `config.py` — **edited** to call page scoring as an optional step (off by default) with validated settings.
-- `tests/test_page_scoring.py` — unit tests for the rule and the engine wiring.
+**The shipped improvement (page scoring)** - in the search engine
+- `webiks_hebrew_ragbot/page_order.py` - the scoring rule itself (one small, dependency-free function). Shared by the engine and the evaluation so both behave identically.
+- `webiks_hebrew_ragbot/page_scoring.py` - wraps that rule for the live engine: groups the search hits by page, embeds the titles, reorders.
+- `webiks_hebrew_ragbot/engine.py` / `config.py` - **edited** to call page scoring as an optional step (off by default) with validated settings.
+- `tests/test_page_scoring.py` - unit tests for the rule and the engine wiring.
 
-**The idea I tried and rejected** — removed from the repo
+**The idea I tried and rejected** - removed from the repo
 - A cross-encoder (BGE) reranker was built, integrated and evaluated, then
   **removed** (code and result files) to keep the repo focused on the shipped
   answer. Its numbers and the reasoning are recorded in `SUBMISSION.md` section 4
   and the top of this file.
 
-**The evaluation harness** — proves the before/after honestly (`rag_eval/`)
-- `common.py` — shared logic; reproduces the real engine's search offline in plain maths.
-- `build_subset.py` — step 1: pick questions, gather pages, embed them once (slow, cached).
-- `eval_baseline.py` — step 2: measure today's system (the "before"); save each question's 50 candidates.
-- `eval_page_scoring.py` — the shipped improvement's before/after, dev/held-out split.
-- `README.md` — walkthrough of the harness.
-- `results/page_scoring_500/`, `results/page_scoring_200/` — the shipped result (headline + earlier pilot).
+**The evaluation harness** - proves the before/after honestly (`rag_eval/`)
+- `common.py` - shared logic; reproduces the real engine's search offline in plain maths.
+- `build_subset.py` - step 1: pick questions, gather pages, embed them once (slow, cached).
+- `eval_baseline.py` - step 2: measure today's system (the "before"); save each question's 50 candidates.
+- `eval_page_scoring.py` - the shipped improvement's before/after, dev/held-out split.
+- `README.md` - walkthrough of the harness.
+- `results/page_scoring_500/`, `results/page_scoring_200/` - the shipped result (headline + earlier pilot).
 
 **Running it**
-- `scripts/run_eval.ps1` — one command: baseline + the 500-question page-scoring run.
-- `scripts/seed_demo.py` — load the corpus into local Elasticsearch for the demo.
-- `scripts/run_demo.py` — launch the backend locally with page scoring on and a mock answer step (no API key).
-- `scripts/verify_demo.py` — send held-out questions to the running API and check the pages match the offline result.
+- `scripts/run_eval.ps1` - one command: baseline + the 500-question page-scoring run.
+- `scripts/seed_demo.py` - load the corpus into local Elasticsearch for the demo.
+- `scripts/run_demo.py` - launch the backend locally with page scoring on and a mock answer step (no API key).
+- `scripts/verify_demo.py` - send held-out questions to the running API and check the pages match the offline result.
 
 **The interview slides**
-- `slides/*.dc.html`, `slides/canvas.json` — the three slides (problem / fix / results), editable source.
-- `slides/hebrew-rag-page-scoring-slides.html` — the built, viewable slide file (~2.5 MB). Big; consider not committing it and delivering the PDF instead.
+- `slides/*.dc.html`, `slides/canvas.json` - the three slides (problem / fix / results), editable source.
+- `slides/hebrew-rag-page-scoring-slides.html` - the built, viewable slide file (~2.5 MB). Big; consider not committing it and delivering the PDF instead.
 
 ---
 
@@ -221,22 +221,22 @@ Everything not listed here is the original upstream Webiks code, unchanged.
 
 - [x] Read the task
 - [x] Clone the repos and understand how the system works
-- [x] Pick an improvement direction — **reranker** (see below)
-- [x] Get the data + model downloaded — corpus ✓, QA questions ✓, Hebrew model ✓ (unzipped, ready)
+- [x] Pick an improvement direction - **reranker** (see below)
+- [x] Get the data + model downloaded - corpus ✓, QA questions ✓, Hebrew model ✓ (unzipped, ready)
 - [x] Set up a clean Python environment (`.venv`) that actually works
-- [x] Build a before/after measurement — **scripts written + smoke-tested ✓** (`rag_eval/`)
-- [x] Run the real baseline (the ~1.5h one-time "study" step) — **DONE ✓ (numbers below)**
-- [x] Build the reranker and measure again — done; it did not help (see top)
-- [x] Wire the reranker into the demo backend (must still run locally) — done, kept optional/off
-- [x] Write `SUBMISSION.md` (1–2 pages) — done; slides pending
+- [x] Build a before/after measurement - **scripts written + smoke-tested ✓** (`rag_eval/`)
+- [x] Run the real baseline (the ~1.5h one-time "study" step) - **DONE ✓ (numbers below)**
+- [x] Build the reranker and measure again - done; it did not help (see top)
+- [x] Wire the reranker into the demo backend (must still run locally) - done, kept optional/off
+- [x] Write `SUBMISSION.md` (1–2 pages) - done; slides pending
 
 ### Why the three "setup" steps matter (in plain words)
 
 The one-liner: **the ingredients, the working kitchen, and the scale that proves the new recipe is better.**
 
-- **Get the data + model (the ingredients).** To test anything you need three things: the **corpus** (~24,000 paragraphs from the Kol-Zchut site — the "textbook" answers live in), the **QA questions** (real Hebrew questions each paired with the correct page — our **answer key**), and the **Hebrew model** (the trained tool that turns text into "meaning-numbers" and decides which paragraphs are close to a question). Without all three there's nothing to measure. They're big, so they're kept out of the repo (see `.gitignore`).
+- **Get the data + model (the ingredients).** To test anything you need three things: the **corpus** (~24,000 paragraphs from the Kol-Zchut site - the "textbook" answers live in), the **QA questions** (real Hebrew questions each paired with the correct page - our **answer key**), and the **Hebrew model** (the trained tool that turns text into "meaning-numbers" and decides which paragraphs are close to a question). Without all three there's nothing to measure. They're big, so they're kept out of the repo (see `.gitignore`).
 - **Clean Python environment `.venv` (the working kitchen).** A private toolbox of software for this project. We built a fresh one because the computer's default was broken, and we installed **the exact library versions Webiks used**. This means our code runs the model the same way the real system does, so the numbers are trustworthy and anyone can reproduce them.
-- **Before/after measurement `rag_eval/` (the scale).** The heart of the task. It asks the answer-key questions and checks **how often the correct page shows up** at #1 / top-3 / top-5 / top-10. We run it once on today's system ("before") and once on the reranker version ("after") — same questions, same scale, fair comparison. "Scripts written + smoke-tested" = the code is done and a tiny trial run works; the full run on hundreds of questions is the slow step saved for later (see below). This is our **evidence**: not "I improved it" but "here are the before/after numbers".
+- **Before/after measurement `rag_eval/` (the scale).** The heart of the task. It asks the answer-key questions and checks **how often the correct page shows up** at #1 / top-3 / top-5 / top-10. We run it once on today's system ("before") and once on the reranker version ("after") - same questions, same scale, fair comparison. "Scripts written + smoke-tested" = the code is done and a tiny trial run works; the full run on hundreds of questions is the slow step saved for later (see below). This is our **evidence**: not "I improved it" but "here are the before/after numbers".
 
 ---
 
@@ -246,21 +246,21 @@ It's the same idea as the OpenAI vector store, but Webiks built every piece them
 
 - **Chunks:** the Kol-Zchut website (Israeli rights/benefits info) cut into paragraphs.
 - **Embedder:** a model they trained to turn Hebrew text into "meaning-numbers" (a fingerprint that captures what the text is about).
-- **Search + storage:** Elasticsearch — a database that's good at "find the paragraphs whose fingerprints are closest to the question."
+- **Search + storage:** Elasticsearch - a database that's good at "find the paragraphs whose fingerprints are closest to the question."
 - **Answer step:** the top paragraphs get sent to GPT to write the final answer. This part can be *faked* ("mock" mode), because the task only grades the **finding**, not the **writing**.
 
 **The whole task is really about one thing: how well does it find the right paragraphs?**
 
 ### How the data gets loaded (embed → save)
 
-Before anything can be searched, the paragraphs have to go into Elasticsearch. Good to know for the interview: **the code does NOT do the chunking** — the corpus file already comes cut into paragraphs. Loading is two steps:
+Before anything can be searched, the paragraphs have to go into Elasticsearch. Good to know for the interview: **the code does NOT do the chunking** - the corpus file already comes cut into paragraphs. Loading is two steps:
 
 1. **Embed each paragraph** (in `engine.py`, `update_docs` / `create_paragraphs`): run the Hebrew model on the paragraph's text to make its fingerprint, and attach that fingerprint to the paragraph. Key line: `content_vectors = self.retrieval_model.encode(...)`.
 2. **Save it** (in `elastic_model.py`, `create_paragraph` / `create_or_update_documents`): write the text + its fingerprint into Elasticsearch. Key line: `self.es_client.index(index=index, body=doc)`. (If updating, it deletes the old copies of that page first, so no duplicates.)
 
-The backend kicks this off through its `/update` route (`main.py`). One nice detail: **search later uses the exact same `encode(...)` on the question**, so the question and the paragraphs are measured with the same ruler — that's the only reason comparing them works.
+The backend kicks this off through its `/update` route (`main.py`). One nice detail: **search later uses the exact same `encode(...)` on the question**, so the question and the paragraphs are measured with the same ruler - that's the only reason comparing them works.
 
-Interview note: since chunking happens *before* the code, "better chunking" would be a **different** improvement lever than the reranker we picked — worth mentioning as a considered-but-not-chosen option.
+Interview note: since chunking happens *before* the code, "better chunking" would be a **different** improvement lever than the reranker we picked - worth mentioning as a considered-but-not-chosen option.
 
 ---
 
@@ -272,11 +272,11 @@ Interview note: since chunking happens *before* the code, "better chunking" woul
 
 ### The problem today
 
-When you ask a question, the system grabs the 50 closest paragraphs by their rough fingerprint match — then keeps only the top few and throws the rest away.
+When you ask a question, the system grabs the 50 closest paragraphs by their rough fingerprint match - then keeps only the top few and throws the rest away.
 
-The catch: the fingerprint match is **fast but crude**. It's good at pulling the right *neighborhood* of ~50 paragraphs, but bad at ranking *which one* is actually the answer. So the real answer is often somewhere in the 50 — but sitting at position #7, not #1 — and gets thrown away before anyone reads it.
+The catch: the fingerprint match is **fast but crude**. It's good at pulling the right *neighborhood* of ~50 paragraphs, but bad at ranking *which one* is actually the answer. So the real answer is often somewhere in the 50 - but sitting at position #7, not #1 - and gets thrown away before anyone reads it.
 
-> Analogy: a librarian who glances at 50 book *titles* that look related, without opening any of them. The right book is usually on the cart — just not the one on top.
+> Analogy: a librarian who glances at 50 book *titles* that look related, without opening any of them. The right book is usually on the cart - just not the one on top.
 
 ### The fix: add a reranker (a "re-orderer")
 
@@ -295,7 +295,7 @@ WITH RERANKER:
                                                (real answer moves up to #1-3 -> kept)
 ```
 
-We do **not** replace the fast search — we still need it to narrow thousands of paragraphs down to 50. We just make better use of those 50.
+We do **not** replace the fast search - we still need it to narrow thousands of paragraphs down to 50. We just make better use of those 50.
 
 ### Why we chose this
 
@@ -313,7 +313,7 @@ The task says to pick **one** improvement, so here's what else was on the table 
 
 2. **Rewrite the question before searching ("query expansion").**
    Add synonyms / rephrasings to the question so the search casts a wider net.
-   *Why not:* the results are hit-or-miss and hard to measure convincingly — sometimes it helps, sometimes it adds noise. Weak, unclear payoff.
+   *Why not:* the results are hit-or-miss and hard to measure convincingly - sometimes it helps, sometimes it adds noise. Weak, unclear payoff.
 
 3. **Replace or retrain the Hebrew model itself.**
    *Why not:* huge effort, needs a powerful graphics card and hours of training, and it throws away the very thing Webiks built and are proud of. Wrong direction for a 72-hour task.
@@ -328,7 +328,7 @@ game. The reranker *replaced* the model's opinion and lost; page scoring
 
 ## Important caveat to be honest about
 
-The set of questions Webiks gives us for testing (the "QA dataset") is the **exact same set their embedder was trained on**. So the fast search already "knows" these questions and will look strong. Our improvement has to add value *on top of* an already-good baseline — which is another reason the reranker (a separate, added signal) is a safer bet than trying to beat their model at its own game.
+The set of questions Webiks gives us for testing (the "QA dataset") is the **exact same set their embedder was trained on**. So the fast search already "knows" these questions and will look strong. Our improvement has to add value *on top of* an already-good baseline - which is another reason the reranker (a separate, added signal) is a safer bet than trying to beat their model at its own game.
 
 We should measure the baseline **first**. If there's clear room to improve, the reranker story is strong. If the baseline is already near-perfect, we rethink.
 
@@ -348,13 +348,13 @@ The model download included Webiks' own evaluation of their trained search (`eva
 | in the **top 10** | **~71%** |
 | MRR@10 (a "how high up" score) | 0.485 |
 
-**Why this matters:** the right page is in the top 10 ~71% of the time, but ranked #1 only ~36% of the time. That big gap is *exactly* the problem a reranker fixes — the answer is caught in the net but not placed on top. In principle, reranking could push the "#1" rate from ~36% toward the ~71% ceiling. This is direct, authors'-own evidence that we picked a real, worthwhile problem.
+**Why this matters:** the right page is in the top 10 ~71% of the time, but ranked #1 only ~36% of the time. That big gap is *exactly* the problem a reranker fixes - the answer is caught in the net but not placed on top. In principle, reranking could push the "#1" rate from ~36% toward the ~71% ceiling. This is direct, authors'-own evidence that we picked a real, worthwhile problem.
 
 (Small print you can skip: this was measured on a small sample; we still make our own before/after numbers. The Hebrew model is built on a well-known ready-made multilingual model called `me5-large`.)
 
 ---
 
-## Our baseline result (the "before" number) — measured 2026-09-12
+## Our baseline result (the "before" number) - measured 2026-09-12
 
 We ran our own test: **200 questions**, searching through a **2,000-page** set (all the pages that hold answers, plus lots of random other pages mixed in). Here's how today's system did:
 
@@ -368,9 +368,9 @@ We ran our own test: **200 questions**, searching through a **2,000-page** set (
 
 **What it means in plain words:** for about 3 out of 4 questions the right page is already at the very top, and almost always (98%) it's somewhere in the top 10.
 
-**Where the reranker can help:** the right page is in the top 10 **98%** of the time but at #1 only **76.5%** of the time. That gap — about **21 questions out of 100** — is the target: the answer is already found, just not on top. The reranker's job is to lift those to #1, which should push the "#1" rate and the "how high up" score up.
+**Where the reranker can help:** the right page is in the top 10 **98%** of the time but at #1 only **76.5%** of the time. That gap - about **21 questions out of 100** - is the target: the answer is already found, just not on top. The reranker's job is to lift those to #1, which should push the "#1" rate and the "how high up" score up.
 
-**Honest note:** these numbers are higher than Webiks' own (~36% at #1). That's expected — we test on a smaller 2,000-page set, so there's less to sift through (an easier exam). It's still a fair before/after because the reranker faces the exact same exam. It just means the room to improve is smaller here, so any gain is meaningful.
+**Honest note:** these numbers are higher than Webiks' own (~36% at #1). That's expected - we test on a smaller 2,000-page set, so there's less to sift through (an easier exam). It's still a fair before/after because the reranker faces the exact same exam. It just means the room to improve is smaller here, so any gain is meaningful.
 
 *(Later: we moved to the full corpus on a GPU PC. There the baseline is ~39–44%
 at #1, close to Webiks' own number, and that is where all the final
@@ -381,36 +381,36 @@ measurements were made.)*
 ## How we measure (built + smoke-tested)
 
 - Take a subset of the QA questions (each has a known correct page).
-- For each question, reproduce exactly what the real system does — offline, in plain math, no Elasticsearch/Docker needed:
+- For each question, reproduce exactly what the real system does - offline, in plain math, no Elasticsearch/Docker needed:
   1. turn the question into meaning-numbers with the same Hebrew model,
   2. score every paragraph by closeness,
   3. take the top 50 (same as the real system), collapse to unique pages,
   4. check: did a correct page land at #1 / top-3 / top-5 / top-10? (+ an "how high up" score, MRR)
 - Report those numbers for the baseline, then again after adding the reranker. Same questions, same set of pages → a fair before/after.
-- Why doing it ourselves is safe: the real system's search is just a "how close are these two things" calculation. We redo that exact same calculation in our own code — same ranking, but it runs instantly and lets us reuse the one-time "studying" for both the before and the after test. The real search database (Elasticsearch) is only needed for the final live demo, not for measuring.
+- Why doing it ourselves is safe: the real system's search is just a "how close are these two things" calculation. We redo that exact same calculation in our own code - same ranking, but it runs instantly and lets us reuse the one-time "studying" for both the before and the after test. The real search database (Elasticsearch) is only needed for the final live demo, not for measuring.
 
 ### The one slow reality (why we subset)
 
-- This machine has no graphics card, so "studying" pages is slow — about **1 page every 3 seconds**.
-- Pages are long (close to the model's size limit), and we must NOT shorten them — that would change the results.
+- This machine has no graphics card, so "studying" pages is slow - about **1 page every 3 seconds**.
+- Pages are long (close to the model's size limit), and we must NOT shorten them - that would change the results.
 - => Studying all 24,000 pages would take ~17 hours. The task explicitly allows using a smaller set, so we do (2,000 pages ≈ 1.5 hours, done once).
-- Quick trial confirmed: if the set is made of *only* correct pages (no random extras) the score is 100% — meaningless. The real run needs random extra pages mixed in so the test is honest.
+- Quick trial confirmed: if the set is made of *only* correct pages (no random extras) the score is 100% - meaningless. The real run needs random extra pages mixed in so the test is honest.
 
-### HOW TO RUN THE BASELINE (already done once — here's how to re-run)
+### HOW TO RUN THE BASELINE (already done once - here's how to re-run)
 
 Open a terminal in the project root and run these two commands.
 
-**Step 1 — build the test set + "study" the pages (the slow, one-time part):**
+**Step 1 - build the test set + "study" the pages (the slow, one-time part):**
 ```
 .venv\Scripts\python rag_eval\build_subset.py --questions 200 --pages 2000 --tag main
 ```
 - `--pages` = how many pages to search through in total. This is the time knob:
   - ~1000 paragraphs ≈ 50-60 min (fastest, but an easier test)
-  - ~2000 paragraphs ≈ 1.5-2 hours (good balance — recommended)
+  - ~2000 paragraphs ≈ 1.5-2 hours (good balance - recommended)
   - ~3500 paragraphs ≈ ~3 hours (most realistic / most convincing)
 - It shows a progress bar with a live time estimate. Runs once; results are cached in `rag_eval\cache\main\`.
 
-**Step 2 — measure the baseline (fast, a few minutes):**
+**Step 2 - measure the baseline (fast, a few minutes):**
 ```
 .venv\Scripts\python rag_eval\eval_baseline.py --tag main
 ```
@@ -424,17 +424,17 @@ Tip: you can leave Step 1 running in the background / overnight. Once it's done,
 - Clean virtual env at `.venv` (the base Anaconda Python had a broken numpy/pandas).
 - Pinned to versions that work together: `torch==2.3.1` (CPU), `sentence-transformers==3.0.1`, `transformers==4.42.3`, `numpy<2`. (Newer torch/transformers hit Windows DLL / bug issues.)
 - Scripts live in `rag_eval/`: `common.py` (shared logic), `build_subset.py` (step 1), `eval_baseline.py` (step 2). The reranker script comes next.
-- **Fair-measurement detail:** Step 2 cuts each question to the same length limit that Step 1 used on the paragraphs (it reads that number back from the saved cache). Questions are short so this basically never changes anything, but it keeps both sides measured exactly the same way — no accidental apples-to-oranges.
+- **Fair-measurement detail:** Step 2 cuts each question to the same length limit that Step 1 used on the paragraphs (it reads that number back from the saved cache). Questions are short so this basically never changes anything, but it keeps both sides measured exactly the same way - no accidental apples-to-oranges.
 
 ---
 
 ## What the data looks like (looked at 2026-09-11)
 
-**QA file** (`Webiks_Hebrew_RAGbot_KolZchut_QA_Training_DataSet_v0.1.csv`) — this is our **answer key** for testing. 4 columns:
-- `question` — a real Hebrew question a user asked
-- `paragraph` — a paragraph that correctly answers it
-- `link` — the Kol-Zchut web page it came from
-- `doc_id` — the ID of that page
+**QA file** (`Webiks_Hebrew_RAGbot_KolZchut_QA_Training_DataSet_v0.1.csv`) - this is our **answer key** for testing. 4 columns:
+- `question` - a real Hebrew question a user asked
+- `paragraph` - a paragraph that correctly answers it
+- `link` - the Kol-Zchut web page it came from
+- `doc_id` - the ID of that page
 
 Numbers:
 - 3,890 rows, but only **2,950 unique questions** (some questions appear more than once).
@@ -442,18 +442,18 @@ Numbers:
 - Answers point to **1,640 different pages**.
 
 Why it matters:
-- We grade automatically — ask each question, compare the pages returned against this key. No human judging.
-- Because some questions have several right answers, we'll score *"did at least one correct page show up near the top?"* — the fair and simple way.
+- We grade automatically - ask each question, compare the pages returned against this key. No human judging.
+- Because some questions have several right answers, we'll score *"did at least one correct page show up near the top?"* - the fair and simple way.
 
 **Why the same question appears multiple times:** each row is one *(question → one correct paragraph)* pair, so a question with several correct answers gets several rows.
 - 700 of 2,950 questions repeat; 689 of those because they have **multiple correct pages**, 19 because of **multiple correct paragraphs on the same page**.
-- Example: the question about whether the Freedom of Information Law applies to private insurers has **two** correct pages — the law itself (1963) and how to file a request (7487) — so it appears twice.
-- Not a data bug — it's the answer key saying "any of these pages counts as correct." This is exactly why we score "at least one correct page near the top."
+- Example: the question about whether the Freedom of Information Law applies to private insurers has **two** correct pages - the law itself (1963) and how to file a request (7487) - so it appears twice.
+- Not a data bug - it's the answer key saying "any of these pages counts as correct." This is exactly why we score "at least one correct page near the top."
 
-**Paragraph corpus** (`Webiks_Hebrew_RAGbot_KolZchut_Paragraphs_Corpus_v1.0.json`, ~150 MB) — all the pages the system searches through. Downloaded ✓. Columns: `doc_id, title, content, link, license`.
+**Paragraph corpus** (`Webiks_Hebrew_RAGbot_KolZchut_Paragraphs_Corpus_v1.0.json`, ~150 MB) - all the pages the system searches through. Downloaded ✓. Columns: `doc_id, title, content, link, license`.
 - **24,487 paragraphs** across **7,007 pages** (~3.5 paragraphs/page, biggest page = 79).
 - **All 1,640 answer-key pages are present in the corpus** (0 missing) → we can grade cleanly.
-- Small enough (~24k, not millions) that we can process the **whole** corpus for measuring — no tiny subset needed. The "indexing takes hours" warning is about the slow database, which we skip for measuring.
+- Small enough (~24k, not millions) that we can process the **whole** corpus for measuring - no tiny subset needed. The "indexing takes hours" warning is about the slow database, which we skip for measuring.
 
 **How they fit (open-book exam analogy):** corpus = the textbook the system searches; QA file = the answer key saying which page is correct for each question.
 
@@ -468,7 +468,7 @@ Why it matters:
 - **Private repo:** https://github.com/AfekDa/Webiks-Hebrew-RAGbot-Home-Task
 - One repo holding both projects as subfolders: `Webiks-Hebrew-RAGbot-Demo/` (backend) and `Webiks-Hebrew-RAGbot/` (search engine), plus `rag_eval/` and the notes.
 - **Commit strategy for easy review:** commit #1 is the pristine upstream code (see `UPSTREAM.md` for exact sources/commits); every later commit's diff shows exactly what we changed for the task.
-- Big files (corpus, QA csv, model, `.venv`, eval cache) are **not** in git — see `.gitignore` + `UPSTREAM.md` for where to download them.
+- Big files (corpus, QA csv, model, `.venv`, eval cache) are **not** in git - see `.gitignore` + `UPSTREAM.md` for where to download them.
 - The improvement will touch **both** subfolders: the reranker step goes in the engine's search; the backend is pointed at the upgraded engine. Reranker kept optional so existing behavior still works.
 - Reviewers: when ready, add them as collaborators on the private repo (Settings → Collaborators), or we can switch to a zip.
 
@@ -485,10 +485,10 @@ Why it matters:
 
 ## Open questions / decisions (resolved)
 
-- Which exact reranker to use. — **BAAI/bge-reranker-v2-m3** (multilingual, handles Hebrew). Built and **rejected**; not what we ship.
-- How big a page set to use for measuring. — started with 2,000 pages on CPU; **final: the full corpus** on a GPU PC.
-- Docker for the final live demo, or an easier alternative. — **standalone Elasticsearch 8.12.2** under `.runtime/` (see `LOCAL_DEMO.md`); Docker also works.
-- What to ship. — **page scoring** (see top). The BGE reranker was evaluated and rejected, and its code and result files were **removed** from the repo; the numbers and reasoning are recorded in `SUBMISSION.md`.
+- Which exact reranker to use. - **BAAI/bge-reranker-v2-m3** (multilingual, handles Hebrew). Built and **rejected**; not what we ship.
+- How big a page set to use for measuring. - started with 2,000 pages on CPU; **final: the full corpus** on a GPU PC.
+- Docker for the final live demo, or an easier alternative. - **standalone Elasticsearch 8.12.2** under `.runtime/` (see `LOCAL_DEMO.md`); Docker also works.
+- What to ship. - **page scoring** (see top). The BGE reranker was evaluated and rejected, and its code and result files were **removed** from the repo; the numbers and reasoning are recorded in `SUBMISSION.md`.
 
 ---
 
@@ -518,20 +518,20 @@ Code: `page_order.py` (the rule), `page_scoring.py` (engine), `eval_page_scoring
 
 One-liner: *“BGE tries to overrule their model. Page scoring listens to their model more carefully.”*
 
-If they ask to see the reranker: *“It is not in this tree on purpose — keep the review focused on what shipped. Happy to walk through the measured numbers.”*
+If they ask to see the reranker: *“It is not in this tree on purpose - keep the review focused on what shipped. Happy to walk through the measured numbers.”*
 
-### Bi-encoder vs cross-encoder — why does it matter here?
+### Bi-encoder vs cross-encoder - why does it matter here?
 
 **Bi-encoder (their embedder, and everything we ship):** encode the question alone, encode each text alone, compare vectors (cosine). Fast. Paragraphs can be stored in ES. Titles are encoded the same way at query time.
 
 **Cross-encoder (BGE, rejected):** one model reads question **and** paragraph **together**, one relevance score. Usually more accurate, too slow for the whole corpus, so you only run it on the top 50.
 
-Here the bi-encoder is **not** a rough first guess — it was trained on this QA file. A general cross-encoder that has never seen Kol-Zchut was asked to overrule that expert and lost more #1s than it fixed.
+Here the bi-encoder is **not** a rough first guess - it was trained on this QA file. A general cross-encoder that has never seen Kol-Zchut was asked to overrule that expert and lost more #1s than it fixed.
 
 ### Why did BGE lose? (they will ask)
 
 1. Their embedder already **knows these questions** (same CSV it was trained on).
-2. BGE scores the **paragraph only**; Kol-Zchut fragments often don’t name the benefit — the **title** does. That is why we added title match to page scoring.
+2. BGE scores the **paragraph only**; Kol-Zchut fragments often don’t name the benefit - the **title** does. That is why we added title match to page scoring.
 3. Reranking all 50 lets a look-alike from far down jump to #1. Blending / shallower rerank recovered some loss, never beat #1 on held-out.
 
 ### What did Webiks train vs what did you train?
@@ -544,9 +544,9 @@ Page scoring reuses that same `.encode()` on **titles** of the ≤50 candidate p
 
 `SentenceTransformer` on their `...QA_Embedder_v1.0` folder, `.eval()`, `.encode()`:
 
-- `build_subset.py` / `eval_baseline.py` — paragraphs and questions
-- `eval_page_scoring.py` — questions + **page titles**
-- `engine.py` — query (and titles inside `PageScorer`)
+- `build_subset.py` / `eval_baseline.py` - paragraphs and questions
+- `eval_page_scoring.py` - questions + **page titles**
+- `engine.py` - query (and titles inside `PageScorer`)
 
 ### What is `rank_pages`? Does it use Elasticsearch?
 
@@ -562,7 +562,7 @@ Page scoring reuses that same `.encode()` on **titles** of the ≤50 candidate p
 
 ### Where did ~36% come from?
 
-Their embedder zip: `eval/Information-Retrieval_evaluation_results.csv`. Not our baseline. On the **full** corpus we are close to that (~39% at #1 before page scoring). The old 76% number was a small 2,000-page exam — don’t quote it as the result.
+Their embedder zip: `eval/Information-Retrieval_evaluation_results.csv`. Not our baseline. On the **full** corpus we are close to that (~39% at #1 before page scoring). The old 76% number was a small 2,000-page exam - don’t quote it as the result.
 
 ### How did you keep the measurement honest?
 

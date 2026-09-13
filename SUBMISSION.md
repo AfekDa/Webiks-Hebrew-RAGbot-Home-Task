@@ -1,11 +1,11 @@
-# Hebrew RAG — Improving the Retrieval Step
+# Hebrew RAG - Improving the Retrieval Step
 
 **Task:** improve the *retrieval* part of the Webiks open-source Hebrew RAG system
 (Kol-Zchut data), measure it honestly on a QA subset, and integrate it cleanly
 into the demo backend so it still runs locally.
 
 **What I changed, in one line:** the engine now ranks a page by **more than its
-single best paragraph** — it also counts how well the question matches the page
+single best paragraph** - it also counts how well the question matches the page
 **title** and the page's **second-best paragraph**, using the *same* trained
 Hebrew model. Only the order of the retrieved candidates changes.
 
@@ -56,7 +56,7 @@ All three numbers come from the same retrieval model (title match = cosine
 between the question and the page title, embedded at query time for the ≤50
 candidates). A small **margin gate** lets only pages whose best paragraph is
 close to the top compete on the full score, so a generic "hub" page with a broad
-title ("guide to foster care") cannot jump up from far below — the one way the
+title ("guide to foster care") cannot jump up from far below - the one way the
 title signal was seen to misfire.
 
 Why this works where a stronger-looking reranker failed (section 4): the shipped
@@ -73,7 +73,7 @@ behaviour exactly.
 ## 3. How I measured it
 
 A small harness (`rag_eval/`) reproduces the engine's retrieval offline in
-NumPy — same model, same "top-50 → collapse to pages" logic — so it runs without
+NumPy - same model, same "top-50 → collapse to pages" logic - so it runs without
 Elasticsearch. **Metrics:** *hit@k* (is a correct page in the top k, for k = 1,
 3, 5, 10) because #1 is what the user and the answer step actually see; *MRR@10*
 because it rewards moving the correct page *upward*, which is the whole job.

@@ -12,10 +12,10 @@ weights were never tuned on, the correct page lands at #1 for **54.8%** of
 questions versus **38.8%** before (+16 points), MRR@10 0.547 → 0.650, with
 top-5 unchanged.
 
-- [SUBMISSION.md](SUBMISSION.md) — the improvement, why, how it was measured, results, limitations
-- [LOCAL_DEMO.md](LOCAL_DEMO.md) — run the upgraded backend locally (no API key needed)
-- [UPSTREAM.md](UPSTREAM.md) — data/model downloads and the Python environment
-- [rag_eval/](rag_eval/) — the evaluation scripts and committed results
+- [SUBMISSION.md](SUBMISSION.md) - the improvement, why, how it was measured, results, limitations
+- [LOCAL_DEMO.md](LOCAL_DEMO.md) - run the upgraded backend locally (no API key needed)
+- [UPSTREAM.md](UPSTREAM.md) - data/model downloads and the Python environment
+- [rag_eval/](rag_eval/) - the evaluation scripts and committed results
 
 During development I also built and evaluated a cross-encoder reranker (BGE)
 the same way, and rejected it because it lowered the first result on held-out
