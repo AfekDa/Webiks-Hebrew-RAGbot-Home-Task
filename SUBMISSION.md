@@ -162,8 +162,7 @@ are in `LOCAL_DEMO.md`. The short version, from the project root after setup
 
 ```
 # 1. Start Elasticsearch (Docker)
-docker run --name hebrew-rag-es -e "discovery.type=single-node" -e "xpack.security.enabled=false" ^
-  -e "ES_JAVA_OPTS=-Xms2g -Xmx2g" -p 127.0.0.1:9200:9200 elasticsearch:8.12.2
+docker run --name hebrew-rag-es -e "discovery.type=single-node" -e "xpack.security.enabled=false" -e "ES_JAVA_OPTS=-Xms2g -Xmx2g" -p 127.0.0.1:9200:9200 elasticsearch:8.12.2
 
 # 2. Index the corpus into Elasticsearch (reuses the evaluation's paragraph vectors)
 .venv\Scripts\python rag_eval\build_subset.py --questions 200 --pages 25000 --tag full
@@ -175,7 +174,7 @@ docker run --name hebrew-rag-es -e "discovery.type=single-node" -e "xpack.securi
 
 Then open http://127.0.0.1:5000/docs, or POST to `/search` with
 `{"query": "<your Hebrew question>", "asked_from": "local-demo"}` (`/health` returns 200).
-For a before/after on the same endpoint, set `PAGE_SCORING_ENABLED=false` and relaunch.
+For a before/after on the same endpoint, set `$env:PAGE_SCORING_ENABLED='false'` and relaunch.
 
 ## 7. Reproduce the evaluation
 
