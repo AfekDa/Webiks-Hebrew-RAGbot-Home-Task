@@ -11,7 +11,8 @@ Hebrew model. Only the order of the retrieved candidates changes.
 
 **Result, in one line:** on the full corpus, on 250 held-out questions the
 weights were never tuned on, the correct page is at **#1 for 54.8% of questions
-instead of 38.8%** (+16 points), MRR@10 **0.547 → 0.650**, with top-5 unchanged.
+instead of 38.8%** (+16 points), MRR@10 **0.547 → 0.650**, with top-5 essentially
+unchanged (77.2% to 78.4%, within noise).
 
 ---
 
