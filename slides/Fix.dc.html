@@ -58,7 +58,7 @@
 
     <div style="display: flex; flex-direction: column; gap: 12px;">
       <div style="font-size: 14px; color: #6b675f; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;">Why not the obvious upgrades?</div>
-      <div style="font-size: 15px; line-height: 1.5; color: #3a3833;">The shipped retriever was <strong>trained on these very questions</strong>. Anything that overrules it loses. All three ideas were built, integrated and tested the same way.</div>
+      <div style="font-size: 15px; line-height: 1.5; color: #3a3833;">The shipped retriever was <strong>trained on these very questions</strong>. Anything that overrules it loses. Both ideas were built, integrated and tested the same way.</div>
 
       <div style="display: flex; flex-direction: column; border: 1px solid #e3ded4; border-radius: 8px; overflow: hidden; background: #ffffff;">
         <div style="display: grid; grid-template-columns: 1fr 96px; padding: 10px 16px; background: #efece5; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b675f; font-weight: 600;">
@@ -68,16 +68,12 @@
           <div style="font-size: 15px;"><strong>Cross-encoder reranker</strong> (BGE)<br><span style="font-size: 13px; color: #6b675f;">re-reads and re-sorts the 50</span></div>
           <div class="mono" style="text-align: right; font-size: 16px; color: #a3412b;">45 → 40</div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 96px; padding: 12px 16px; border-top: 1px solid #ece8df; align-items: center;">
-          <div style="font-size: 15px;"><strong>Hybrid: dense + BM25</strong><br><span style="font-size: 13px; color: #6b675f;">adds exact-keyword search</span></div>
-          <div class="mono" style="text-align: right; font-size: 16px; color: #a3412b;">45 → 36</div>
-        </div>
         <div style="display: grid; grid-template-columns: 1fr 96px; padding: 12px 16px; border-top: 1px solid #ece8df; align-items: center; background: #eaf5f2;">
           <div style="font-size: 15px;"><strong>Page scoring</strong><br><span style="font-size: 13px; color: #6b675f;">listens to the same model more carefully</span></div>
           <div class="mono" style="text-align: right; font-size: 16px; color: #0e7c6b; font-weight: 600;">39 → 55</div>
         </div>
       </div>
-      <div style="font-size: 13px; color: #6b675f; line-height: 1.45;">Held-out sets differ: 100 questions for the first two, 250 fresh ones for page scoring (on those same 100 it was 45 → 50). Both rejected ideas helped ranks 4–5 and hurt the first result.</div>
+      <div style="font-size: 13px; color: #6b675f; line-height: 1.45;">Held-out sets differ: 100 questions for the reranker, 250 fresh ones for page scoring (on those same 100 it was 45 → 50). The rejected idea helped ranks 4–5 and hurt the first result.</div>
     </div>
   </div>
 

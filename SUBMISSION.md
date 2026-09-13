@@ -59,7 +59,7 @@ close to the top compete on the full score, so a generic "hub" page with a broad
 title ("guide to foster care") cannot jump up from far below — the one way the
 title signal was seen to misfire.
 
-Why this works where two stronger-looking ideas failed (section 4): the shipped
+Why this works where a stronger-looking reranker failed (section 4): the shipped
 retriever was **trained on this very QA data** and is unusually strong. Anything
 that tries to *overrule* it loses. Page scoring does not overrule it; it listens
 to it more carefully.
@@ -105,16 +105,15 @@ Chosen on dev: second-paragraph weight 0.25, title weight 0.25, margin 0.05. The
 earlier 200-question pilot on the same corpus pointed the same way (held-out
 #1: 45% → 50%, MRR 0.598 → 0.626).
 
-**Two alternatives, built, integrated and rejected by the same test:**
+**A stronger-looking alternative, built, integrated and rejected by the same test:**
 
 | Alternative | What it does | Held-out #1 | Why it loses |
 |---|---|---|---|
 | **Cross-encoder reranker** (BAAI/bge-reranker-v2-m3) | re-reads question+paragraph together, re-sorts; tried both replacing and blending with the search order | 45% → 40% (blend), 44% → 41% (replace) | a general model overruling a retriever trained on these questions; fixes some #1s, breaks more |
-| **Hybrid dense + BM25** (reciprocal rank fusion) | adds exact-keyword search | 45% → 36% | BM25 alone is weak here (13% at #1); even dense-weighted fusion drags poor keyword matches near the top |
 
-Both improved recall around ranks 4–5 and damaged the first result. They were
-built and evaluated during development, then removed so the repo carries only
-the shipped answer; the measured numbers above are the result of that work.
+It improved recall around ranks 4–5 and damaged the first result. It was built
+and evaluated during development, then removed so the repo carries only the
+shipped answer; the measured numbers above are the result of that work.
 
 **Why a strong reranker lost, in plain words.** A reranker is usually the safest
 retrieval upgrade, so this deserves an explanation:
@@ -132,10 +131,6 @@ retrieval upgrade, so this deserves an explanation:
   to the top few, or blending its order with the search order, recovered most of
   the loss (top-5 even improved) but never beat the baseline at #1 on held-out
   questions. A gain only at ranks 4–5 is not what the user sees.
-
-The same pattern explains BM25: exact-word matching alone is weak here (Hebrew
-inflection, many pages sharing official terms), and fusing a weak ranker with a
-strong one mostly imports the weak one's mistakes near the top.
 
 ---
 
@@ -193,5 +188,4 @@ powershell -ExecutionPolicy Bypass -File scripts\run_eval.ps1
 .venv\Scripts\python rag_eval\eval_page_scoring.py --tag full500 --dev 250 --name page_scoring_500
 ```
 
-Run the backend locally: `LOCAL_DEMO.md`. Evaluation walkthrough and the
-rejected alternatives: `rag_eval/README.md`.
+Run the backend locally: `LOCAL_DEMO.md`. Evaluation walkthrough: `rag_eval/README.md`.

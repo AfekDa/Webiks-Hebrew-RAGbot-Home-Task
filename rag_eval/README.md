@@ -43,10 +43,9 @@ but the split does stop us from fooling ourselves with a hand-picked setting.
    pick the page-scoring weights on 250 questions and confirm on the other 250.
    The rule (`webiks_hebrew_ragbot/page_order.py`) is the exact code the engine runs.
 
-Two other ideas were evaluated during development and rejected (a cross-encoder
-reranker and a dense + BM25 hybrid). Their evaluation code and result files were
-removed so this folder carries only the shipped answer; their numbers and the
-reasoning are in `SUBMISSION.md` section 4.
+A cross-encoder reranker was evaluated during development and rejected. Its
+evaluation code and result files were removed so this folder carries only the
+shipped answer; the numbers and the reasoning are in `SUBMISSION.md` section 4.
 
 ## Committed results (`rag_eval/results/`)
 

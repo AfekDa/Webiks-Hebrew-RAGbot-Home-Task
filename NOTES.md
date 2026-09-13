@@ -10,16 +10,16 @@
 
 ## What actually happened (the short version)
 
-We tried **three** improvements. Each was built, integrated, and measured the
+We tried **two** improvements. Each was built, integrated, and measured the
 same honest way: pick any setting on the first half of the questions, report it
 once on the untouched second half, ship only if the **first result** improves
-without the top-5 getting worse. Two failed that test; the third passed clearly.
+without the top-5 getting worse. The reranker failed that test; page scoring
+passed clearly.
 
 | # | Idea | Held-out: correct page at #1 | Verdict |
 |---|---|---|---|
 | 1 | **Cross-encoder reranker** (BGE) re-reads question + paragraph, re-sorts | 44% → 41% (replace), 45% → 40% (blend) | rejected |
-| 2 | **Hybrid: dense + BM25 keyword search** (reciprocal rank fusion) | 45% → 36% | rejected |
-| 3 | **Page scoring**: best paragraph + second paragraph + title match | 38.8% → **54.8%** (500 fresh questions, 250/250) | **shipped** |
+| 2 | **Page scoring**: best paragraph + second paragraph + title match | 38.8% → **54.8%** (500 fresh questions, 250/250) | **shipped** |
 
 ### Why the reranker did not work (this surprised us, so here it is properly)
 
@@ -50,14 +50,6 @@ the reasons are specific to this system, not a bug:
 to say. The title and the second paragraph are signals the *same* model
 produces, and combining them is what finally moved the first result.
 
-### Why hybrid (BM25) did not work
-
-Exact-word matching is weak on this corpus on its own (13% at #1): Hebrew
-inflection, many pages sharing the same official terms, and questions phrased
-colloquially. Fusing a weak ranker with a strong one mostly imports the weak
-one's mistakes near the top. It did help recall a little (top-5), same pattern
-as the reranker: better at ranks 4–5, worse at #1.
-
 ### Why page scoring worked
 
 The baseline finds the right page (in the top 10 for ~87% of questions) but
@@ -72,8 +64,7 @@ no re-indexing. Full numbers and limitations: `SUBMISSION.md` section 4 and 6.
 
 - [x] Understand the system, get data + model, clean environment, measurement harness
 - [x] Baseline on the full corpus (24,487 paragraphs)
-- [x] Reranker: built, integrated (optional), measured — **rejected** (numbers above)
-- [x] Hybrid BM25 + dense: built, measured — **rejected**
+- [x] Reranker: built, measured — **rejected**, then **removed** from the repo (numbers in `SUBMISSION.md`)
 - [x] Page scoring: built, integrated (optional, on in the local demo), measured on 500 fresh questions — **shipped**
 - [x] `SUBMISSION.md` written around the shipped result
 - [x] 2–3 slides for the interview (in `slides/`; export a PDF from the canvas to present)
@@ -177,11 +168,11 @@ Everything not listed here is the original upstream Webiks code, unchanged.
 - `webiks_hebrew_ragbot/engine.py` / `config.py` — **edited** to call page scoring as an optional step (off by default) with validated settings.
 - `tests/test_page_scoring.py` — unit tests for the rule and the engine wiring.
 
-**The two ideas I tried and rejected** — removed from the repo
-- A cross-encoder (BGE) reranker and a dense+BM25 hybrid were built, integrated
-  and evaluated, then **removed** (code and result files) to keep the repo
-  focused on the shipped answer. Their numbers and the reasoning are recorded in
-  `SUBMISSION.md` section 4 and the top of this file.
+**The idea I tried and rejected** — removed from the repo
+- A cross-encoder (BGE) reranker was built, integrated and evaluated, then
+  **removed** (code and result files) to keep the repo focused on the shipped
+  answer. Its numbers and the reasoning are recorded in `SUBMISSION.md` section 4
+  and the top of this file.
 
 **The evaluation harness** — proves the before/after honestly (`rag_eval/`)
 - `common.py` — shared logic; reproduces the real engine's search offline in plain maths.
@@ -295,28 +286,22 @@ We do **not** replace the fast search — we still need it to narrow thousands o
 
 The task says to pick **one** improvement, so here's what else was on the table and why the reranker won:
 
-1. **Mix in keyword matching ("hybrid search").**
-   Today it only matches by *meaning*. This option adds old-fashioned *exact-word* matching too, which helps with names, numbers, and specific terms the meaning-match can blur.
-   *Why not:* it tries to do a better job at the *same* step their trained Hebrew model already does — and since that model was trained on these exact questions, it's already strong and hard to beat head-on. The reranker instead adds a *new* step on top, which is a safer win. (This is our clear second choice / possible add-on.)
-
-2. **Change how paragraphs are cut up ("chunking").**
+1. **Change how paragraphs are cut up ("chunking").**
    How the text is split into paragraphs affects what can be found. Better splitting can help.
    *Why not:* it means re-processing and re-storing the **entire** corpus, which takes hours on this machine, and it's hard to prove the splitting specifically was what helped. High effort, fuzzy story.
 
-3. **Rewrite the question before searching ("query expansion").**
+2. **Rewrite the question before searching ("query expansion").**
    Add synonyms / rephrasings to the question so the search casts a wider net.
    *Why not:* the results are hit-or-miss and hard to measure convincingly — sometimes it helps, sometimes it adds noise. Weak, unclear payoff.
 
-4. **Replace or retrain the Hebrew model itself.**
+3. **Replace or retrain the Hebrew model itself.**
    *Why not:* huge effort, needs a powerful graphics card and hours of training, and it throws away the very thing Webiks built and are proud of. Wrong direction for a 72-hour task.
 
 **Bottom line (at the time):** the reranker gives the best mix of *clear, provable improvement* + *low risk* + *respects their existing model*, which is why we picked it.
 
 **What we learned:** "respects their existing model" turned out to be the whole
-game. The reranker *replaced* the model's opinion and lost; hybrid search
-*diluted* it and lost; page scoring *extends* it (same model, more of its
-signals) and won. Option 1 above (hybrid) was also tried after the reranker and
-rejected for the reasons at the top.
+game. The reranker *replaced* the model's opinion and lost; page scoring
+*extends* it (same model, more of its signals) and won.
 
 ---
 
@@ -482,7 +467,7 @@ Why it matters:
 - Which exact reranker to use. — **BAAI/bge-reranker-v2-m3** (multilingual, handles Hebrew). Built and **rejected**; not what we ship.
 - How big a page set to use for measuring. — started with 2,000 pages on CPU; **final: the full corpus** on a GPU PC.
 - Docker for the final live demo, or an easier alternative. — **standalone Elasticsearch 8.12.2** under `.runtime/` (see `LOCAL_DEMO.md`); Docker also works.
-- What to ship. — **page scoring** (see top). The BGE reranker and hybrid were evaluated and rejected, and both their code and result files were **removed** from the repo; their numbers and reasoning are recorded in `SUBMISSION.md`.
+- What to ship. — **page scoring** (see top). The BGE reranker was evaluated and rejected, and its code and result files were **removed** from the repo; the numbers and reasoning are recorded in `SUBMISSION.md`.
 
 ---
 
@@ -508,9 +493,11 @@ Code: `page_order.py` (the rule), `page_scoring.py` (engine), `eval_page_scoring
 
 ### Did you use BGE / a reranker?
 
-**We built it, measured it, and did not ship it.** Cross-encoder BGE re-reads `(question, paragraph)` and re-sorts. Held-out #1 went **down** (about 44–45% → 40–41%). It stays in the repo, off (`RERANK_ENABLED` defaults false). The local demo does not turn it on.
+**We built it, measured it, did not ship it, then deleted the code.** Cross-encoder BGE re-reads `(question, paragraph)` and re-sorts. Held-out #1 went **down** (about 44–45% → 40–41%). The numbers and why it lost are in `SUBMISSION.md` section 4. The repo you clone has **only page scoring**.
 
 One-liner: *“BGE tries to overrule their model. Page scoring listens to their model more carefully.”*
+
+If they ask to see the reranker: *“It is not in this tree on purpose — keep the review focused on what shipped. Happy to walk through the measured numbers.”*
 
 ### Bi-encoder vs cross-encoder — why does it matter here?
 
@@ -526,15 +513,11 @@ Here the bi-encoder is **not** a rough first guess — it was trained on this QA
 2. BGE scores the **paragraph only**; Kol-Zchut fragments often don’t name the benefit — the **title** does. That is why we added title match to page scoring.
 3. Reranking all 50 lets a look-alike from far down jump to #1. Blending / shallower rerank recovered some loss, never beat #1 on held-out.
 
-### Why not hybrid (BM25 + dense)?
-
-Also built and rejected. BM25 alone is weak here (~13% at #1: Hebrew inflection, shared official terms). Fusing a weak ranker with a strong one **imports mistakes near the top**. Same pattern as BGE: a bit better at ranks 4–5, worse at #1.
-
 ### What did Webiks train vs what did you train?
 
 **They** fine-tuned `me5-large` → the Hebrew embedder. We **do not** train or fine-tune it. We load it and call `.encode()`.
 
-Page scoring reuses that same `.encode()` on **titles** of the ≤50 candidate pages. BGE would have been a second model; we don’t use it in the demo.
+Page scoring reuses that same `.encode()` on **titles** of the ≤50 candidate pages. BGE would have been a second model; we tried it, it lost, we removed it.
 
 ### Where in code do you reuse their model?
 
@@ -562,4 +545,4 @@ Their embedder zip: `eval/Information-Retrieval_evaluation_results.csv`. Not our
 
 ### How did you keep the measurement honest?
 
-Settings picked on the **first half** of the questions (dev). Reported **once** on the untouched second half (held-out). Ship only if held-out **#1 or MRR goes up** and **top-5 does not go down**. BGE and hybrid failed that rule; page scoring passed.
+Settings picked on the **first half** of the questions (dev). Reported **once** on the untouched second half (held-out). Ship only if held-out **#1 or MRR goes up** and **top-5 does not go down**. BGE failed that rule; page scoring passed.
