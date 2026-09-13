@@ -112,26 +112,13 @@ earlier 200-question pilot on the same corpus pointed the same way (held-out
 |---|---|---|---|
 | **Cross-encoder reranker** (BAAI/bge-reranker-v2-m3) | re-reads question+paragraph together, re-sorts, tried both replacing and blending with the search order | 45% → 40% (blend), 44% → 41% (replace) | a general model overruling a retriever trained on these questions - fixes some #1s, breaks more |
 
-It improved recall around ranks 4–5 and damaged the first result. It was built
-and evaluated during development, then removed so the repo carries only the
-shipped answer. The measured numbers above are the result of that work.
-
-**Why a strong reranker lost, in plain words.** A reranker is usually the safest
-retrieval upgrade, so this deserves an explanation:
-
-- *The retriever has seen the exam.* The shipped embedder was fine-tuned on this
-  QA file. On these questions it is an expert. A general reranker that has never
-  seen Kol-Zchut was asked to overrule it and lost more often than it won
-  (fixed 24 first results out of 200, broke 30).
-- *The reranker reads the paragraph alone, but the topic lives in the title.*
-  Kol-Zchut paragraphs are fragments ("the payment is X", "apply at office Y")
-  that often don't name the benefit. The page title does. Two similar fragments
-  from different pages look alike to the reranker. That observation is what led
-  to adding the title match in page scoring.
-- *Deep reranking lets look-alikes jump from far below.* Restricting the reranker
-  to the top few, or blending its order with the search order, recovered most of
-  the loss (top-5 even improved) but never beat the baseline at #1 on held-out
-  questions. A gain only at ranks 4–5 is not what the user sees.
+It improved recall around ranks 4–5 but damaged the first result, for two
+reasons. The embedder was fine-tuned on these questions, so a general reranker
+was overruling an expert on its own exam (it fixed 24 top-1 answers and broke
+30). And it reads only the paragraph text, while the topic usually lives in the
+page *title* - which is exactly what led to the title signal in page scoring.
+The code was built and evaluated during development, then removed so the repo
+carries only the shipped answer.
 
 ---
 
