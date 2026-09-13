@@ -393,7 +393,7 @@ measurements were made.)*
 
 ### HOW TO RUN THE BASELINE (already done once — here's how to re-run)
 
-Open a terminal in `C:\Users\GIGABYTE\Documents\webiks` and run these two commands.
+Open a terminal in the project root and run these two commands.
 
 **Step 1 — build the test set + "study" the pages (the slow, one-time part):**
 ```
@@ -471,7 +471,7 @@ Why it matters:
 
 ## Environment notes
 
-- Working folder: `C:\Users\GIGABYTE\Documents\webiks`
+- Working folder: the project root
 - Cloned: `Webiks-Hebrew-RAGbot-Demo` (backend), `Webiks-Hebrew-RAGbot` (search engine), QA dataset repo.
 - Have: Python 3.11, git, conda. No Docker yet (needed later for the live demo's database).
 - Data still to download: paragraph corpus + QA questions CSV (Google Drive), the Hebrew model (Google Drive).
