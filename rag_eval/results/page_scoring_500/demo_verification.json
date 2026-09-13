@@ -1,0 +1,77 @@
+{
+  "url": "http://127.0.0.1:5000",
+  "health_status": 200,
+  "rule": "second x0.25 + title x0.25, gate 0.05",
+  "checks": [
+    {
+      "qi": 250,
+      "status": 200,
+      "pages": [
+        "4118",
+        "21253",
+        "21232"
+      ],
+      "matches_offline": true,
+      "differs_from_baseline": true,
+      "correct_in_top3": true,
+      "retrieval_seconds": 1.2413,
+      "llm_tokens": 0
+    },
+    {
+      "qi": 251,
+      "status": 200,
+      "pages": [
+        "6238",
+        "6337",
+        "6097"
+      ],
+      "matches_offline": true,
+      "differs_from_baseline": true,
+      "correct_in_top3": true,
+      "retrieval_seconds": 0.1949,
+      "llm_tokens": 0
+    },
+    {
+      "qi": 252,
+      "status": 200,
+      "pages": [
+        "466",
+        "4435",
+        "7139"
+      ],
+      "matches_offline": true,
+      "differs_from_baseline": true,
+      "correct_in_top3": true,
+      "retrieval_seconds": 0.1807,
+      "llm_tokens": 0
+    },
+    {
+      "qi": 253,
+      "status": 200,
+      "pages": [
+        "12588",
+        "12471",
+        "12594"
+      ],
+      "matches_offline": true,
+      "differs_from_baseline": true,
+      "correct_in_top3": true,
+      "retrieval_seconds": 0.1024,
+      "llm_tokens": 0
+    },
+    {
+      "qi": 256,
+      "status": 200,
+      "pages": [
+        "3442",
+        "14658",
+        "11177"
+      ],
+      "matches_offline": true,
+      "differs_from_baseline": false,
+      "correct_in_top3": true,
+      "retrieval_seconds": 0.1706,
+      "llm_tokens": 0
+    }
+  ]
+}
