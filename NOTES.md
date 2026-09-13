@@ -127,6 +127,36 @@ question
 So the title match is extra evidence the paragraph text alone cannot give — and
 it is exactly the signal the reranker was blind to (it only read paragraph text).
 
+### The hardest interview question: "if the model was trained on these questions, how did changing the ranking help?"
+
+The trap in the question: **"trained on the questions" does not mean "the ranking
+is already optimal."** It means one narrow thing, and the win lives in the gap.
+
+1. **What training optimized was paragraph-level, not page-level.** Fine-tuning on
+   the QA pairs pulled each question's numbers close to its correct *paragraph's*
+   numbers. The model never learned to *rank whole pages*; the system's rule of
+   "rank each page by its single best paragraph" is a plain heuristic bolted on
+   afterward that the training never touched.
+2. **Trained is not perfect.** The model generalized, it did not memorize a lookup
+   table — which is exactly why even on these questions the baseline is 39% at #1,
+   not 100%. There is real spread to exploit.
+3. **The baseline throws signal away.** The model scores all 50 paragraphs, then
+   the baseline keeps one number per page (its best paragraph) and ignores the
+   rest — the page's other matching paragraphs, and the title (the search only
+   ever embeds paragraph text, never the title).
+4. **Page scoring uses more of the SAME model's output.** Second-best paragraph:
+   same model. Title match: same model, pointed at a field it was never asked
+   about. No new knowledge, no expert beaten — we just stop ignoring signal the
+   model already produced.
+
+So: the model being trained on these questions is why a **reranker** (a rival
+opinion) could not win. It is NOT why the ranking was already optimal, because
+the page-ranking step was a lossy heuristic training never optimized. Page
+scoring fixes the heuristic, not the model.
+
+**One line to say out loud:** the reranker tried to *replace* the expert's
+judgment and lost; page scoring *reads more of the expert's own notes* and won.
+
 ---
 
 ## File map — what each file we added is for
