@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", "IBM Plex Sans Hebrew", "Segoe UI", system-ui, sans-serif; color: #1c1b18; }
+    a { color: #0e7c6b; } a:hover { color: #0a5e51; }
+    .mono { font-family: "IBM Plex Mono", "Consolas", monospace; }
+    .heb { font-family: "IBM Plex Sans Hebrew", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; direction: rtl; }
+  </style>
+</helmet>
+<div style="width: 1280px; height: 720px; box-sizing: border-box; background: #f6f4ef; padding: 56px 72px; display: flex; flex-direction: column; gap: 24px; position: relative;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline;">
+    <div style="font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #6b675f; font-weight: 600;">2 / 3 — The fix</div>
+    <div style="font-size: 13px; color: #6b675f;">Page scoring</div>
+  </div>
+
+  <h1 style="margin: 0; font-size: 48px; line-height: 1.08; font-weight: 700; letter-spacing: -0.01em; max-width: 1050px;">Score the <span style="color: #0e7c6b;">page</span>, not just its luckiest paragraph.</h1>
+
+  <div style="display: grid; grid-template-columns: 7fr 5fr; gap: 36px; flex-grow: 1;">
+
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div style="padding: 22px 24px; background: #1c1b18; color: #f6f4ef; border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
+        <div class="mono" style="font-size: 20px; line-height: 1.5;">
+          <span style="color: #9c978c;">page score =</span> best paragraph<br>
+          <span style="color: #9c978c;">&nbsp;&nbsp;+</span> 0.25 × second-best paragraph<br>
+          <span style="color: #9c978c;">&nbsp;&nbsp;+</span> 0.25 × <span style="color: #5fd3bd;">title match</span>
+        </div>
+        <div style="font-size: 14px; color: #c9c4b8; line-height: 1.5;">All three from the <strong style="color: #f6f4ef;">same trained model</strong>. A small margin gate (0.05) keeps generic "hub" pages from jumping up from far below.</div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+        <div style="padding: 16px 18px; background: #ffffff; border: 1px solid #e3ded4; border-radius: 8px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-weight: 600; font-size: 16px;">Second-best paragraph</div>
+          <div style="font-size: 15px; line-height: 1.45; color: #3a3833;">The right page usually has several matching paragraphs. A look-alike has one.</div>
+        </div>
+        <div style="padding: 16px 18px; background: #ffffff; border: 1px solid #e3ded4; border-radius: 8px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-weight: 600; font-size: 16px;">Title match</div>
+          <div style="font-size: 15px; line-height: 1.45; color: #3a3833;">Kol-Zchut titles name the topic. Paragraphs are fragments that often don't.</div>
+          <div class="heb" style="font-size: 15px; color: #0e7c6b; margin-top: 2px;">״עד מתי מקבלים קצבת ילדים?״ → <strong>קצבת ילדים</strong></div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; flex-wrap: nowrap;">
+        <div style="padding: 7px 12px; border: 1px solid #cfc9bd; border-radius: 999px; font-size: 14px; white-space: nowrap;">no new model</div>
+        <div style="padding: 7px 12px; border: 1px solid #cfc9bd; border-radius: 999px; font-size: 14px; white-space: nowrap;">no re-indexing</div>
+        <div style="padding: 7px 12px; border: 1px solid #cfc9bd; border-radius: 999px; font-size: 14px; white-space: nowrap;">one flag, off = original</div>
+        <div style="padding: 7px 12px; border: 1px solid #cfc9bd; border-radius: 999px; font-size: 14px; white-space: nowrap;">milliseconds per query</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="font-size: 14px; color: #6b675f; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;">Why not the obvious upgrades?</div>
+      <div style="font-size: 15px; line-height: 1.5; color: #3a3833;">The shipped retriever was <strong>trained on these very questions</strong>. Anything that overrules it loses. All three ideas were built, integrated and tested the same way.</div>
+
+      <div style="display: flex; flex-direction: column; border: 1px solid #e3ded4; border-radius: 8px; overflow: hidden; background: #ffffff;">
+        <div style="display: grid; grid-template-columns: 1fr 96px; padding: 10px 16px; background: #efece5; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b675f; font-weight: 600;">
+          <div>Idea</div><div style="text-align: right;">Held-out #1, %</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 96px; padding: 12px 16px; border-top: 1px solid #ece8df; align-items: center;">
+          <div style="font-size: 15px;"><strong>Cross-encoder reranker</strong> (BGE)<br><span style="font-size: 13px; color: #6b675f;">re-reads and re-sorts the 50</span></div>
+          <div class="mono" style="text-align: right; font-size: 16px; color: #a3412b;">45 → 40</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 96px; padding: 12px 16px; border-top: 1px solid #ece8df; align-items: center;">
+          <div style="font-size: 15px;"><strong>Hybrid: dense + BM25</strong><br><span style="font-size: 13px; color: #6b675f;">adds exact-keyword search</span></div>
+          <div class="mono" style="text-align: right; font-size: 16px; color: #a3412b;">45 → 36</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 96px; padding: 12px 16px; border-top: 1px solid #ece8df; align-items: center; background: #eaf5f2;">
+          <div style="font-size: 15px;"><strong>Page scoring</strong><br><span style="font-size: 13px; color: #6b675f;">listens to the same model more carefully</span></div>
+          <div class="mono" style="text-align: right; font-size: 16px; color: #0e7c6b; font-weight: 600;">39 → 55</div>
+        </div>
+      </div>
+      <div style="font-size: 13px; color: #6b675f; line-height: 1.45;">Held-out sets differ: 100 questions for the first two, 250 fresh ones for page scoring (on those same 100 it was 45 → 50). Both rejected ideas helped ranks 4–5 and hurt the first result.</div>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 72px; right: 72px; bottom: 28px; display: flex; justify-content: space-between; font-size: 12px; color: #6b675f;">
+    <div>The scoring rule is one small function shared by the engine and the evaluation, so what was measured is what runs.</div>
+    <div>Afek David</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -76,8 +76,132 @@ no re-indexing. Full numbers and limitations: `SUBMISSION.md` section 4 and 6.
 - [x] Hybrid BM25 + dense: built, measured — **rejected**
 - [x] Page scoring: built, integrated (optional, on in the local demo), measured on 500 fresh questions — **shipped**
 - [x] `SUBMISSION.md` written around the shipped result
-- [ ] 2–3 slides for the interview
+- [x] 2–3 slides for the interview (in `slides/`; export a PDF from the canvas to present)
 - [ ] Run `scripts/verify_demo.py` once on the GPU PC against the live API and commit its output
+
+---
+
+## How page scoring works, in the simplest terms
+
+First, one word: **"embed"** means *run a piece of text through the Hebrew model
+and get back a list of numbers that captures its meaning*. Two texts about the
+same thing get similar number-lists. To compare a question and a paragraph, you
+compare their number-lists (closer = more relevant). That is the only trick in
+the whole system.
+
+**Embedding happens in three places. Only the third is new.**
+
+1. **Every paragraph — embedded once, at setup.** When the corpus is loaded into
+   Elasticsearch, each paragraph is turned into its number-list and stored. This
+   never runs again. (We did NOT change this, and we do NOT chunk anything — the
+   corpus already comes cut into paragraphs.)
+2. **The question — embedded fresh on every query.** In `engine.py`
+   (`self.retrieval_model.encode(query)`). Elasticsearch compares that to all the
+   stored paragraph number-lists and hands back the 50 closest paragraphs.
+3. **The page titles — embedded fresh on every query. THIS is what page scoring
+   adds.** In `page_scoring.py` (the `self.model.encode([...titles...])` line).
+   A title is short (e.g. "קצבת ילדים" = child allowance), so it is embedded
+   whole, in one piece — no chunking. Only the ~50 candidate pages' titles are
+   embedded, so it costs milliseconds.
+
+**The flow, end to end:**
+
+```
+question
+  → embed the question                              (engine.py)
+  → Elasticsearch returns the 50 closest paragraphs (uses paragraphs embedded once at setup)
+  → PAGE SCORING (page_scoring.py):
+       group those 50 paragraphs by their page
+       embed each candidate page's title            ← the one new embed
+       compare each title to the question            → "title match" number
+       score each page =
+            best paragraph
+          + 0.25 × second-best paragraph
+          + 0.25 × title match
+       reorder the pages by that score               (rule lives in page_order.py)
+  → keep the top few pages → answer step
+```
+
+**Why the title helps:** a Kol-Zchut paragraph is a fragment ("the payment is X",
+"apply at office Y") that often does not name the topic. The page *title* does.
+So the title match is extra evidence the paragraph text alone cannot give — and
+it is exactly the signal the reranker was blind to (it only read paragraph text).
+
+### The hardest interview question: "if the model was trained on these questions, how did changing the ranking help?"
+
+The trap in the question: **"trained on the questions" does not mean "the ranking
+is already optimal."** It means one narrow thing, and the win lives in the gap.
+
+1. **What training optimized was paragraph-level, not page-level.** Fine-tuning on
+   the QA pairs pulled each question's numbers close to its correct *paragraph's*
+   numbers. The model never learned to *rank whole pages*; the system's rule of
+   "rank each page by its single best paragraph" is a plain heuristic bolted on
+   afterward that the training never touched.
+2. **Trained is not perfect.** The model generalized, it did not memorize a lookup
+   table — which is exactly why even on these questions the baseline is 39% at #1,
+   not 100%. There is real spread to exploit.
+3. **The baseline throws signal away.** The model scores all 50 paragraphs, then
+   the baseline keeps one number per page (its best paragraph) and ignores the
+   rest — the page's other matching paragraphs, and the title (the search only
+   ever embeds paragraph text, never the title).
+4. **Page scoring uses more of the SAME model's output.** Second-best paragraph:
+   same model. Title match: same model, pointed at a field it was never asked
+   about. No new knowledge, no expert beaten — we just stop ignoring signal the
+   model already produced.
+
+So: the model being trained on these questions is why a **reranker** (a rival
+opinion) could not win. It is NOT why the ranking was already optimal, because
+the page-ranking step was a lossy heuristic training never optimized. Page
+scoring fixes the heuristic, not the model.
+
+**One line to say out loud:** the reranker tried to *replace* the expert's
+judgment and lost; page scoring *reads more of the expert's own notes* and won.
+
+---
+
+## File map — what each file we added is for
+
+Plain one-liners so a reviewer (or future me) knows why each file exists.
+Everything not listed here is the original upstream Webiks code, unchanged.
+
+**The write-up and this diary**
+- `SUBMISSION.md` — the graded 1–2 page write-up: the improvement, why, results, limits.
+- `NOTES.md` — this working diary (the reasoning trail; not the graded doc).
+- `README.md` — repo front page: what shipped, the one headline number, where to look.
+- `LOCAL_DEMO.md` — how to run the upgraded backend locally (Elasticsearch, seed, launch).
+- `UPSTREAM.md` — where the big files (corpus, model, QA) come from; how to set up the env.
+
+**The shipped improvement (page scoring)** — in the search engine
+- `webiks_hebrew_ragbot/page_order.py` — the scoring rule itself (one small, dependency-free function). Shared by the engine and the evaluation so both behave identically.
+- `webiks_hebrew_ragbot/page_scoring.py` — wraps that rule for the live engine: groups the search hits by page, embeds the titles, reorders.
+- `webiks_hebrew_ragbot/engine.py` / `config.py` — **edited** to call page scoring as an optional step (off by default) with validated settings.
+- `tests/test_page_scoring.py` — unit tests for the rule and the engine wiring.
+
+**The two ideas I tried and rejected** — kept as evidence for the write-up
+- `webiks_hebrew_ragbot/reranker.py` — the cross-encoder (BGE) reranker step. Optional, off. Rejected.
+- `webiks_hebrew_ragbot/rank_fusion.py` — the "combine two rankings" maths (used by the reranker's blend mode and by the hybrid eval).
+- `tests/test_reranker.py`, `tests/test_rank_fusion.py` — their unit tests.
+
+**The evaluation harness** — proves the before/after honestly (`rag_eval/`)
+- `common.py` — shared logic; reproduces the real engine's search offline in plain maths.
+- `build_subset.py` — step 1: pick questions, gather pages, embed them once (slow, cached).
+- `eval_baseline.py` — step 2: measure today's system (the "before"); save each question's 50 candidates.
+- `eval_page_scoring.py` — the shipped improvement's before/after, dev/held-out split.
+- `eval_reranker.py`, `sweep_blend.py`, `summarize_results.py` — the reranker's evaluation, its no-model tuning sweep, and its stats/export. Evidence for the rejection.
+- `eval_hybrid.py` — the dense+BM25 hybrid evaluation. Evidence for that rejection.
+- `README.md` — walkthrough of the harness.
+- `results/page_scoring_500/`, `results/page_scoring_200/` — the shipped result (headline + earlier pilot).
+- `results/replace/`, `results/blend/` — the reranker's committed numbers.
+
+**Running it**
+- `scripts/run_eval.ps1` — one command: baseline + the 500-question page-scoring run (alternatives behind a flag).
+- `scripts/seed_demo.py` — load the corpus into local Elasticsearch for the demo.
+- `scripts/run_demo.py` — launch the backend locally with page scoring on and a mock answer step (no API key).
+- `scripts/verify_demo.py` — send held-out questions to the running API and check the pages match the offline result.
+
+**The interview slides**
+- `slides/*.dc.html`, `slides/canvas.json` — the three slides (problem / fix / results), editable source.
+- `slides/hebrew-rag-page-scoring-slides.html` — the built, viewable slide file (~2.5 MB). Big; consider not committing it and delivering the PDF instead.
 
 ---
 

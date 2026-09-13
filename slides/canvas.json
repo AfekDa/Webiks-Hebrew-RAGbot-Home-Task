@@ -1,0 +1,8 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "1 · Problem", "x": 0, "y": 0, "w": 1280, "h": 720 },
+    { "file": "Fix.dc.html", "title": "2 · Fix", "x": 1380, "y": 0, "w": 1280, "h": 720 },
+    { "file": "Results.dc.html", "title": "3 · Results", "x": 2760, "y": 0, "w": 1280, "h": 720 }
+  ],
+  "launch": { "view": "canvas" }
+}
