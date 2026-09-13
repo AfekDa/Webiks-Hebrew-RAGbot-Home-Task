@@ -357,7 +357,87 @@ Why it matters:
 
 ## Open questions / decisions (resolved)
 
-- Which exact reranker to use. — **BAAI/bge-reranker-v2-m3** (multilingual, handles Hebrew). Built and rejected.
+- Which exact reranker to use. — **BAAI/bge-reranker-v2-m3** (multilingual, handles Hebrew). Built and **rejected**; not what we ship.
 - How big a page set to use for measuring. — started with 2,000 pages on CPU; **final: the full corpus** on a GPU PC.
 - Docker for the final live demo, or an easier alternative. — **standalone Elasticsearch 8.12.2** under `.runtime/` (see `LOCAL_DEMO.md`); Docker also works.
-- What to ship. — **page scoring** (see top). Reranker and hybrid stay in the code, off by default, as evaluated alternatives.
+- What to ship. — **page scoring** (see top). BGE reranker and hybrid stay in the code, **off by default**, as evaluated alternatives — not part of the live demo path.
+
+---
+
+## Interview Q/A (say this out loud)
+
+The shipped story is **page scoring**, not BGE. If they ask about BGE, that is a *failed experiment we measured*, not the product.
+
+### What did you ship?
+
+After Elasticsearch returns the 50 closest paragraphs, we **re-score pages** with the *same* Hebrew embedder:
+
+```
+page score = best paragraph
+           + 0.25 × second-best paragraph
+           + 0.25 × title match
+```
+
+plus a small **margin gate** so a generic “hub” page with a broad title cannot jump from far below.
+
+Held-out (250 questions, weights never tuned on them): correct page at **#1: 38.8% → 54.8%**. No new model, no re-indexing. Flag `PAGE_SCORING_ENABLED`; the local demo turns it on.
+
+Code: `page_order.py` (the rule), `page_scoring.py` (engine), `eval_page_scoring.py` (measurement). Hook in `engine.search_documents` after ES, before page-dedup.
+
+### Did you use BGE / a reranker?
+
+**We built it, measured it, and did not ship it.** Cross-encoder BGE re-reads `(question, paragraph)` and re-sorts. Held-out #1 went **down** (about 44–45% → 40–41%). It stays in the repo, off (`RERANK_ENABLED` defaults false). The local demo does not turn it on.
+
+One-liner: *“BGE tries to overrule their model. Page scoring listens to their model more carefully.”*
+
+### Bi-encoder vs cross-encoder — why does it matter here?
+
+**Bi-encoder (their embedder, and everything we ship):** encode the question alone, encode each text alone, compare vectors (cosine). Fast. Paragraphs can be stored in ES. Titles are encoded the same way at query time.
+
+**Cross-encoder (BGE, rejected):** one model reads question **and** paragraph **together**, one relevance score. Usually more accurate, too slow for the whole corpus, so you only run it on the top 50.
+
+Here the bi-encoder is **not** a rough first guess — it was trained on this QA file. A general cross-encoder that has never seen Kol-Zchut was asked to overrule that expert and lost more #1s than it fixed.
+
+### Why did BGE lose? (they will ask)
+
+1. Their embedder already **knows these questions** (same CSV it was trained on).
+2. BGE scores the **paragraph only**; Kol-Zchut fragments often don’t name the benefit — the **title** does. That is why we added title match to page scoring.
+3. Reranking all 50 lets a look-alike from far down jump to #1. Blending / shallower rerank recovered some loss, never beat #1 on held-out.
+
+### Why not hybrid (BM25 + dense)?
+
+Also built and rejected. BM25 alone is weak here (~13% at #1: Hebrew inflection, shared official terms). Fusing a weak ranker with a strong one **imports mistakes near the top**. Same pattern as BGE: a bit better at ranks 4–5, worse at #1.
+
+### What did Webiks train vs what did you train?
+
+**They** fine-tuned `me5-large` → the Hebrew embedder. We **do not** train or fine-tune it. We load it and call `.encode()`.
+
+Page scoring reuses that same `.encode()` on **titles** of the ≤50 candidate pages. BGE would have been a second model; we don’t use it in the demo.
+
+### Where in code do you reuse their model?
+
+`SentenceTransformer` on their `...QA_Embedder_v1.0` folder, `.eval()`, `.encode()`:
+
+- `build_subset.py` / `eval_baseline.py` — paragraphs and questions
+- `eval_page_scoring.py` — questions + **page titles**
+- `engine.py` — query (and titles inside `PageScorer`)
+
+### What is `rank_pages`? Does it use Elasticsearch?
+
+**No.** Live product: ES finds the 50 nearest paragraphs. Our tests: numpy cosine on cached vectors, then the same “unique pages” walk. Same *rule*, no database. Page scoring only **reorders those same 50**, then the same page walk.
+
+### What does hit@k count?
+
+**Pages (`doc_id`)**, not paragraphs. Search is on paragraphs; after dedup we ask “is an accepted page in the top k?” Any one of several correct pages counts.
+
+### 50 vs `top_k`?
+
+50 = paragraph net (ES `size=50`). `top_k` = how many **pages** go to the LLM. Page scoring reorders the 50 hits, then the engine still picks `top_k` unique pages.
+
+### Where did ~36% come from?
+
+Their embedder zip: `eval/Information-Retrieval_evaluation_results.csv`. Not our baseline. On the **full** corpus we are close to that (~39% at #1 before page scoring). The old 76% number was a small 2,000-page exam — don’t quote it as the result.
+
+### How did you keep the measurement honest?
+
+Settings picked on the **first half** of the questions (dev). Reported **once** on the untouched second half (held-out). Ship only if held-out **#1 or MRR goes up** and **top-5 does not go down**. BGE and hybrid failed that rule; page scoring passed.
