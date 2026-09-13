@@ -2,8 +2,8 @@
 
 This repository contains the [Webiks retrieval engine](https://github.com/NNLP-IL/Webiks-Hebrew-RAGbot)
 and [Demo backend](https://github.com/NNLP-IL/Webiks-Hebrew-RAGbot-Demo), with the
-reranker integrated into the local engine. Install the local package; installing
-the published `webiks-hebrew-ragbot==1.0.1` omits this change.
+page-scoring step integrated into the local engine. Install the local package;
+installing the published `webiks-hebrew-ragbot==1.0.1` omits this change.
 
 Download these assets to the repository root, and extract the model ZIP there:
 
@@ -17,9 +17,6 @@ Source descriptions: [corpus](https://github.com/NNLP-IL/Webiks-Hebrew-RAGbot-Ko
 [QA data](https://github.com/NNLP-IL/Webiks-Hebrew-RAGbot-KolZchut-QA-Training-DataSet).
 The corpus contains paragraphs, not one record per page. The QA dataset was used
 to train the embedder, so evaluation on it is not a held-out generalization test.
-
-The reranker downloads from [BAAI/bge-reranker-v2-m3](https://huggingface.co/BAAI/bge-reranker-v2-m3).
-The September 2026 run uses revision `953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`.
 
 ## Windows GPU environment
 

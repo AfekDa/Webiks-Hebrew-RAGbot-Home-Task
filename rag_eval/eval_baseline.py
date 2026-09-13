@@ -6,8 +6,8 @@ Encodes the test questions, scores them against the cached haystack exactly the
 way the real system does (top-50 paragraphs -> dedup to pages), and reports how
 often the correct page lands at #1 / top-3 / top-5 / top-10, plus MRR@10.
 
-It also saves each question's top-50 paragraph candidates, so the reranker step
-can reorder the SAME candidates without recomputing this stage.
+It also saves each question's top-50 paragraph candidates, so the page-scoring
+step can reorder the SAME candidates without recomputing this stage.
 
 Usage:
     .venv/Scripts/python rag_eval/eval_baseline.py --tag main
@@ -46,7 +46,7 @@ def main():
     ks = (1, 3, 5, 10)
     agg = {k: 0 for k in ks}
     mrr_sum = 0.0
-    candidates = []  # saved for the reranker step
+    candidates = []  # saved for the page-scoring step
     for qi, q in enumerate(questions):
         sims = q_emb[qi] @ emb.T                     # cosine (both normalized)
         ranked_pages, top_para_idx = common.rank_pages(sims, para_doc_ids)

@@ -13,7 +13,7 @@ Engine.search_documents in Webiks-Hebrew-RAGbot/webiks_hebrew_ragbot/engine.py
      exactly like Engine.search_documents.
 
 Doing it offline in numpy avoids needing Elasticsearch/Docker and lets us
-reuse one cached corpus embedding for both the baseline and the reranker.
+reuse one cached corpus embedding across the baseline and the page-scoring eval.
 """
 import csv, json, os
 from collections import defaultdict
@@ -65,7 +65,7 @@ def rank_pages(sims, para_doc_ids, es_size=ES_SIZE):
     Returns two things:
       - pages: the ranked list of page ids (doc_ids), best first;
       - order: the top `es_size` paragraph indices (best first, before dedup).
-        The reranker step reuses `order` to re-score the SAME paragraphs.
+        Later steps reuse `order` to re-score the SAME paragraphs.
     """
     import numpy as np
     order = np.argsort(-sims)[:es_size]        # top-50 paragraph indices

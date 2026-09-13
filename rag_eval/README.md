@@ -42,10 +42,11 @@ but the split does stop us from fooling ourselves with a hand-picked setting.
    `eval_page_scoring.py --tag full500 --dev 250 --name page_scoring_500`
    pick the page-scoring weights on 250 questions and confirm on the other 250.
    The rule (`webiks_hebrew_ragbot/page_order.py`) is the exact code the engine runs.
-4. Optional (`RUN_ALTERNATIVES=1`): the two rejected alternatives.
-   `eval_reranker.py` + `summarize_results.py` (cross-encoder, replace and blend
-   modes), `sweep_blend.py` (no-inference blend/depth sweep with dev/held-out),
-   and `eval_hybrid.py` (dense + BM25 with reciprocal rank fusion).
+
+Two other ideas were evaluated during development and rejected (a cross-encoder
+reranker and a dense + BM25 hybrid). Their evaluation code was removed to keep
+this folder focused on the shipped answer; their measured numbers are kept in
+`rag_eval/results/` (see below) and the reasoning is in `SUBMISSION.md`.
 
 ## Committed results (`rag_eval/results/`)
 
@@ -53,16 +54,12 @@ but the split does stop us from fooling ourselves with a hand-picked setting.
 |---|---|
 | `page_scoring_500/` | **the submitted improvement**: 500 fresh questions, 250 dev / 250 held-out |
 | `page_scoring_200/` | earlier pilot of the same idea on the first 200 questions (100/100) |
-| `replace/`, `blend/` | cross-encoder reranker, two ways of using it (rejected) |
-
-Hybrid dense+BM25 and the blend sweep print their verdicts; both were `SHIP: no`
-on the held-out half and are described in `SUBMISSION.md`.
+| `replace/`, `blend/` | the rejected cross-encoder reranker, two ways of using it |
 
 ## Resume and outputs
 
-Embedding chunks and reranker checkpoints live under `rag_eval/cache/<tag>/` and
-resume on re-run. Reranker checkpoints refuse to mix with changed settings; use a
-fresh tag. The full corpus, model files, embeddings, and cache stay out of Git.
+Embedding chunks live under `rag_eval/cache/<tag>/` and resume on re-run. The
+full corpus, model files, embeddings, and cache stay out of Git.
 
 ## Check the live API
 

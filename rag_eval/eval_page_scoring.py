@@ -1,9 +1,10 @@
 """Page scoring: use MORE of what the trained model already tells us.
 
-Two generic add-ons (a cross-encoder reranker, a BM25 keyword retriever) both
-lost on the held-out test, because they try to overrule a retriever that was
-trained on this very data. This improvement goes the other way: it keeps the
-trained model as the only judge, but listens to it more carefully.
+Two generic add-ons tried earlier (a cross-encoder reranker, a BM25 keyword
+retriever) both lost on the held-out test, because they try to overrule a
+retriever that was trained on this very data. This improvement goes the other
+way: it keeps the trained model as the only judge, but listens to it more
+carefully. (Their numbers are in rag_eval/results/; their code was removed.)
 
 Today a page's rank is just the rank of its single best paragraph. That ignores
 two signals the same model gives us for free:

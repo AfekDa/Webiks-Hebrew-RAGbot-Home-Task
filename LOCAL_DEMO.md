@@ -57,25 +57,22 @@ one small model call per query (embedding the titles of the ≤50 retrieved
 candidates) and works on CPU or GPU. To compare the original behaviour in a
 separate launch, set `$env:PAGE_SCORING_ENABLED='false'` before starting.
 
-The evaluated-and-rejected cross-encoder reranker stays available but off; set
-`$env:RERANK_ENABLED='true'` to try it (downloads BAAI/bge-reranker-v2-m3 on
-first use; on CPU also set `$env:RERANK_DTYPE='float32'`). Change settings by
-setting environment variables and restarting the process. The server listens
-only on localhost.
+Change settings by setting environment variables and restarting the process.
+The server listens only on localhost.
 
 Stop the backend or Elasticsearch with Ctrl+C in its terminal.
 
 ## Targeted tests
 
 ```powershell
-.venv/Scripts/python -m pytest --import-mode=importlib Webiks-Hebrew-RAGbot/tests/test_page_scoring.py Webiks-Hebrew-RAGbot/tests/test_rank_fusion.py Webiks-Hebrew-RAGbot/tests/test_reranker.py Webiks-Hebrew-RAGbot-Demo/tests/test_gpt_client.py -q
+.venv/Scripts/python -m pytest --import-mode=importlib Webiks-Hebrew-RAGbot/tests/test_page_scoring.py Webiks-Hebrew-RAGbot-Demo/tests/test_gpt_client.py -q
 ```
 
 These check the page-scoring rule (title lift, second paragraph, margin gate,
 ties), that the engine keeps each page's best paragraph while reordering pages,
-that page scoring off is byte-for-byte the original behaviour, the reranker and
-fusion helpers, invalid settings, and key-free mock generation. The existing
-integration suite additionally uses Docker testcontainers.
+that page scoring off is byte-for-byte the original behaviour, invalid settings,
+and key-free mock generation. The existing integration suite additionally uses
+Docker testcontainers.
 
 To confirm the live API uses the improvement, run `scripts/verify_demo.py` as
 described in `rag_eval/README.md`.

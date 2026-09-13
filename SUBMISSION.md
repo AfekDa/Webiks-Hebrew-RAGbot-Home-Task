@@ -112,8 +112,9 @@ earlier 200-question pilot on the same corpus pointed the same way (held-out
 | **Cross-encoder reranker** (BAAI/bge-reranker-v2-m3) | re-reads question+paragraph together, re-sorts; tried both replacing and blending with the search order | 45% → 40% (blend), 44% → 41% (replace) | a general model overruling a retriever trained on these questions; fixes some #1s, breaks more |
 | **Hybrid dense + BM25** (reciprocal rank fusion) | adds exact-keyword search | 45% → 36% | BM25 alone is weak here (13% at #1); even dense-weighted fusion drags poor keyword matches near the top |
 
-Both improved recall around ranks 4–5 and damaged the first result. Both stay
-in the code, off by default, with results committed (`rag_eval/results/`).
+Both improved recall around ranks 4–5 and damaged the first result. Their code
+was removed to keep the repo focused on the shipped answer; their measured
+numbers stay committed in `rag_eval/results/` (`replace/`, `blend/`).
 
 **Why a strong reranker lost, in plain words.** A reranker is usually the safest
 retrieval upgrade, so this deserves an explanation:
@@ -149,8 +150,9 @@ strong one mostly imports the weak one's mistakes near the top.
   the engine and the evaluation, so what was measured is what runs.
 - The answer (LLM) step is behind a mock, so the whole backend runs **locally
   with no API key**. No change to Elasticsearch, the corpus, or the trained model.
-- **Tests:** 28 unit tests (page-scoring rule, engine keeps each page's best
-  paragraph, off = original behaviour, reranker, fusion, invalid settings).
+- **Tests:** unit tests for the page-scoring rule (title lift, second paragraph,
+  margin gate, ties), that the engine keeps each page's best paragraph while
+  reordering, that off = the original behaviour, and invalid settings.
   `scripts/verify_demo.py` sends held-out questions to the running API and
   checks the returned pages equal the offline improved ranking.
 

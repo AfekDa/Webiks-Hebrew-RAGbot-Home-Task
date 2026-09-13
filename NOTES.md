@@ -177,24 +177,23 @@ Everything not listed here is the original upstream Webiks code, unchanged.
 - `webiks_hebrew_ragbot/engine.py` / `config.py` — **edited** to call page scoring as an optional step (off by default) with validated settings.
 - `tests/test_page_scoring.py` — unit tests for the rule and the engine wiring.
 
-**The two ideas I tried and rejected** — kept as evidence for the write-up
-- `webiks_hebrew_ragbot/reranker.py` — the cross-encoder (BGE) reranker step. Optional, off. Rejected.
-- `webiks_hebrew_ragbot/rank_fusion.py` — the "combine two rankings" maths (used by the reranker's blend mode and by the hybrid eval).
-- `tests/test_reranker.py`, `tests/test_rank_fusion.py` — their unit tests.
+**The two ideas I tried and rejected** — code removed, numbers kept
+- A cross-encoder (BGE) reranker and a dense+BM25 hybrid were built, integrated
+  and evaluated, then **removed from the codebase** to keep the repo focused on
+  the shipped answer. Their measured numbers stay in `rag_eval/results/replace/`
+  and `.../blend/`, and the reasoning is in `SUBMISSION.md` section 4.
 
 **The evaluation harness** — proves the before/after honestly (`rag_eval/`)
 - `common.py` — shared logic; reproduces the real engine's search offline in plain maths.
 - `build_subset.py` — step 1: pick questions, gather pages, embed them once (slow, cached).
 - `eval_baseline.py` — step 2: measure today's system (the "before"); save each question's 50 candidates.
 - `eval_page_scoring.py` — the shipped improvement's before/after, dev/held-out split.
-- `eval_reranker.py`, `sweep_blend.py`, `summarize_results.py` — the reranker's evaluation, its no-model tuning sweep, and its stats/export. Evidence for the rejection.
-- `eval_hybrid.py` — the dense+BM25 hybrid evaluation. Evidence for that rejection.
 - `README.md` — walkthrough of the harness.
 - `results/page_scoring_500/`, `results/page_scoring_200/` — the shipped result (headline + earlier pilot).
 - `results/replace/`, `results/blend/` — the reranker's committed numbers.
 
 **Running it**
-- `scripts/run_eval.ps1` — one command: baseline + the 500-question page-scoring run (alternatives behind a flag).
+- `scripts/run_eval.ps1` — one command: baseline + the 500-question page-scoring run.
 - `scripts/seed_demo.py` — load the corpus into local Elasticsearch for the demo.
 - `scripts/run_demo.py` — launch the backend locally with page scoring on and a mock answer step (no API key).
 - `scripts/verify_demo.py` — send held-out questions to the running API and check the pages match the offline result.
@@ -484,7 +483,7 @@ Why it matters:
 - Which exact reranker to use. — **BAAI/bge-reranker-v2-m3** (multilingual, handles Hebrew). Built and **rejected**; not what we ship.
 - How big a page set to use for measuring. — started with 2,000 pages on CPU; **final: the full corpus** on a GPU PC.
 - Docker for the final live demo, or an easier alternative. — **standalone Elasticsearch 8.12.2** under `.runtime/` (see `LOCAL_DEMO.md`); Docker also works.
-- What to ship. — **page scoring** (see top). BGE reranker and hybrid stay in the code, **off by default**, as evaluated alternatives — not part of the live demo path.
+- What to ship. — **page scoring** (see top). The BGE reranker and hybrid were evaluated and rejected, and their code was **removed** from the repo; their numbers stay in `rag_eval/results/` as evidence.
 
 ---
 

@@ -82,7 +82,6 @@ def test_engine_orders_pages_by_title_and_keeps_best_paragraph():
     engine.retrieval_model = _fake_model(vectors)
     engine.elastic_model = Mock()
     engine.elastic_model.search.return_value = hits
-    engine.reranker = None
     engine.page_scorer = PageScorer(engine.retrieval_model, title_weight=0.5, second_weight=0.0, margin=0.05)
 
     result = engine.search_documents("question", top_k=2)
@@ -100,7 +99,6 @@ def test_engine_page_scoring_off_is_the_original_behaviour():
     engine.retrieval_model = _fake_model({"question": [1.0, 0.0]})
     engine.elastic_model = Mock()
     engine.elastic_model.search.return_value = hits
-    engine.reranker = None
     engine.page_scorer = None
     assert [d["doc_id"] for d in engine.search_documents("question", top_k=2)] == [1, 2]
 

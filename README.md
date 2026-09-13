@@ -17,10 +17,11 @@ top-5 unchanged.
 - [UPSTREAM.md](UPSTREAM.md) — data/model downloads and the Python environment
 - [rag_eval/](rag_eval/) — the evaluation scripts and committed results
 
-Two alternatives were built, integrated and evaluated the same way, and
-rejected because they lowered the first result on held-out questions: a
-cross-encoder reranker (BGE) and hybrid dense + BM25 retrieval. Both remain in
-the code, off by default, with their results committed.
+During development I also built and evaluated two other ideas the same way, and
+rejected both because they lowered the first result on held-out questions: a
+cross-encoder reranker (BGE) and hybrid dense + BM25 retrieval. Their code was
+removed to keep the repo focused on the shipped answer; their measured numbers
+stay in `rag_eval/results/` and the reasoning is in `SUBMISSION.md`.
 
 Run the full evaluation from the repository root (GPU):
 

@@ -63,13 +63,6 @@ class Engine:
             self.retrieval_model = retrieval_model
         self.retrieval_model.eval()
 
-        # Optional reranker: built only when turned on, so the base system is
-        # unchanged (no extra model loaded) when RERANK_ENABLED is false.
-        self.reranker = None
-        if config.RERANK_ENABLED:
-            from .reranker import Reranker
-            self.reranker = Reranker()
-
         # Optional page scoring: rank pages by best + second paragraph + title
         # match, using the same retrieval model. Off by default.
         self.page_scorer = None
@@ -125,10 +118,6 @@ class Engine:
            """
         query_embeddings = self.retrieval_model.encode(query)
         all_docs = self.elastic_model.search(query_embeddings)
-
-        # Optional: let the reranker re-order the candidates before we pick pages.
-        if self.reranker is not None:
-            all_docs = self.reranker.rerank(query, all_docs)
 
         # Optional: order pages by best + second paragraph + title match.
         if self.page_scorer is not None:
