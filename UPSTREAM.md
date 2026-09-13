@@ -18,20 +18,18 @@ Source descriptions: [corpus](https://github.com/NNLP-IL/Webiks-Hebrew-RAGbot-Ko
 The corpus contains paragraphs, not one record per page. The QA dataset was used
 to train the embedder, so evaluation on it is not a held-out generalization test.
 
-## Windows GPU environment
+## Windows environment
 
 Run from the repository root with Python 3.11 installed:
 
 ```powershell
 py -3.11 -m venv .venv
 .venv\Scripts\python -m pip install --upgrade pip
-.venv\Scripts\python -m pip install torch==2.3.1 --index-url https://download.pytorch.org/whl/cu121
+.venv\Scripts\python -m pip install torch==2.3.1
 Push-Location Webiks-Hebrew-RAGbot-Demo
 ..\.venv\Scripts\python -m pip install -r requirements.txt
 Pop-Location
-.venv\Scripts\python -c "import torch; assert torch.cuda.is_available(); print(torch.cuda.get_device_name())"
+.venv\Scripts\python -c "import torch; print(torch.__version__)"
 ```
 
-This session installed Python 3.11 using `python -m uv venv --python 3.11 .venv`.
-The CUDA wheel includes its CUDA runtime; a separate CUDA toolkit is unnecessary.
 See `LOCAL_DEMO.md` for backend launch instructions.

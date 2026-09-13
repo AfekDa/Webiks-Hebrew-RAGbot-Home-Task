@@ -22,7 +22,7 @@ the same way, and rejected it because it lowered the first result on held-out
 questions. Its code was removed to keep the repo focused on the shipped answer;
 the numbers and the reasoning are in `SUBMISSION.md`.
 
-Run the full evaluation from the repository root (GPU):
+Run the full evaluation from the repository root:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/run_eval.ps1

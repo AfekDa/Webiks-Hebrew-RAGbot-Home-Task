@@ -2,10 +2,8 @@ $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 $evalPython = Join-Path (Get-Location) '.venv/Scripts/python.exe'
 if (-not (Test-Path -LiteralPath $evalPython)) { throw 'Create .venv first; see UPSTREAM.md.' }
-& $evalPython -c "import torch; assert torch.cuda.is_available(), 'GPU required for this runbook'; print(torch.__version__, torch.cuda.get_device_name())"
-if ($LASTEXITCODE -ne 0) { throw 'GPU preflight failed.' }
 
-# 1. Embed the full corpus once (tag "full", 200 questions; minutes on a GPU, cached after).
+# 1. Embed the full corpus once (tag "full", 200 questions; cached after the first run).
 & $evalPython -u rag_eval/build_subset.py --questions 200 --pages 25000 --tag full
 if ($LASTEXITCODE -ne 0) { throw 'Corpus embedding failed.' }
 & $evalPython -u rag_eval/eval_baseline.py --tag full

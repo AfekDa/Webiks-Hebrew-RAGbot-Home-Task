@@ -54,7 +54,7 @@ The response includes retrieved `docs`, a mock `llm_result`, and retrieval timin
 `scripts/run_demo.py` resolves the paths and turns on **page scoring** with the
 evaluated weights (title 0.25, second paragraph 0.25, margin gate 0.05). It adds
 one small model call per query (embedding the titles of the ≤50 retrieved
-candidates) and works on CPU or GPU. To compare the original behaviour in a
+candidates) and needs no special hardware. To compare the original behaviour in a
 separate launch, set `$env:PAGE_SCORING_ENABLED='false'` before starting.
 
 Change settings by setting environment variables and restarting the process.

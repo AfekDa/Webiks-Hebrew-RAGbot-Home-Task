@@ -43,8 +43,8 @@ the reasons are specific to this system, not a bug:
    reranker to the top few, or blending its order with the search order,
    recovered most of the loss (top-5 even went up) but never beat the baseline
    at #1 on the held-out half. A gain only on ranks 4–5 is not what users feel.
-4. **It is also slow and heavy.** A 2.2 GB model, ~2 s per question on a GPU and
-   minutes on a CPU, for a result that was not better. Not worth shipping.
+4. **It is also slow and heavy.** A 2.2 GB model, seconds per question, for a
+   result that was not better. Not worth shipping.
 
 **The lesson that led to the fix:** don't fight the trained model; give it more
 to say. The title and the second paragraph are signals the *same* model
@@ -68,7 +68,7 @@ no re-indexing. Full numbers and limitations: `SUBMISSION.md` section 4 and 6.
 - [x] Page scoring: built, integrated (optional, on in the local demo), measured on 500 fresh questions - **shipped**
 - [x] `SUBMISSION.md` written around the shipped result
 - [x] 2–3 slides for the interview (in `slides/`; export a PDF from the canvas to present)
-- [x] Run `scripts/verify_demo.py` on the GPU PC against the live API and commit its output
+- [x] Run `scripts/verify_demo.py` against the live API and commit its output
 
 ### Live demo proof (what we did)
 
@@ -372,7 +372,7 @@ We ran our own test: **200 questions**, searching through a **2,000-page** set (
 
 **Honest note:** these numbers are higher than Webiks' own (~36% at #1). That's expected - we test on a smaller 2,000-page set, so there's less to sift through (an easier exam). It's still a fair before/after because the reranker faces the exact same exam. It just means the room to improve is smaller here, so any gain is meaningful.
 
-*(Later: we moved to the full corpus on a GPU PC. There the baseline is ~39–44%
+*(Later: we moved to the full corpus. There the baseline is ~39–44%
 at #1, close to Webiks' own number, and that is where all the final
 measurements were made.)*
 
@@ -486,7 +486,7 @@ Why it matters:
 ## Open questions / decisions (resolved)
 
 - Which exact reranker to use. - **BAAI/bge-reranker-v2-m3** (multilingual, handles Hebrew). Built and **rejected**; not what we ship.
-- How big a page set to use for measuring. - started with 2,000 pages on CPU; **final: the full corpus** on a GPU PC.
+- How big a page set to use for measuring. - started with 2,000 pages, **final: the full corpus**.
 - Docker for the final live demo, or an easier alternative. - **standalone Elasticsearch 8.12.2** under `.runtime/` (see `LOCAL_DEMO.md`); Docker also works.
 - What to ship. - **page scoring** (see top). The BGE reranker was evaluated and rejected, and its code and result files were **removed** from the repo; the numbers and reasoning are recorded in `SUBMISSION.md`.
 

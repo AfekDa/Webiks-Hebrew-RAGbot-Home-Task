@@ -168,7 +168,7 @@ For a before/after on the same endpoint, set `$env:PAGE_SCORING_ENABLED='false'`
 From the project root, with the data + model in place (see `UPSTREAM.md`):
 
 ```
-# one command (GPU): embed the corpus, baseline, then the 500-question page-scoring run
+# one command: embed the corpus, baseline, then the 500-question page-scoring run
 powershell -ExecutionPolicy Bypass -File scripts\run_eval.ps1
 
 # or step by step

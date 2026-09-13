@@ -6,8 +6,8 @@ Run from the repository root after following `UPSTREAM.md`:
 powershell -ExecutionPolicy Bypass -File scripts/run_eval.ps1
 ```
 
-The runbook requires a working CUDA device and stops immediately if a step fails.
-The individual Python scripts can also run on CPU, but take substantially longer.
+The runbook stops immediately if a step fails. Embedding the full corpus once is
+the slow step; a smaller `--pages` value runs faster for a quick check.
 
 ## What it measures
 
