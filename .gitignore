@@ -28,3 +28,6 @@ Thumbs.db
 
 # Local services and runtime logs
 .runtime/
+
+# Built slide canvas (2.5MB); regenerate from the .dc.html sources, deliver the PDF
+slides/hebrew-rag-page-scoring-slides.html
